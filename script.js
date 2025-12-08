@@ -1,7 +1,7 @@
 // --- 1. داده‌ها ---
 const branchColors = ['#E57373', '#F06292', '#BA68C8', '#9575CD', '#4FC3F7', '#4DB6AC', '#81C784', '#FFD54F'];
-const rootFather = { name: "امیرحمزه نظری", gender: "male", birth: 1300 };
-const rootMother = { name: "ماه‌خاور رستگار", gender: "female", birth: 1305 };
+const rootFather = { name: "امیرحمزه نظری", gender: "male", birth: 1300, imgUrl: "" };
+const rootMother = { name: "ماه‌خاور رستگار", gender: "female", birth: 1305, imgUrl: "" };
 
 const rootRelatives = [
     { id: 101, name: "کرم نظری (برادر امیر)", gender: "male", birth: 1298, relatedTo: "father", spouse: { name: "بانو زری", gender: "female", birth: 1302 } },
@@ -20,27 +20,31 @@ const GRANDCHILDREN_PER_CHILD = 4;
 // --- 2. تولید نودها ---
 let rawNodes = [], rawEdges = [], idCounter = 1;
 
-// ریشه
+function getAvatar(node) {
+    if (node.imgUrl) return node.imgUrl;
+    return node.gender === 'male' 
+        ? 'https://cdn-icons-png.flaticon.com/512/4825/4825038.png' 
+        : 'https://cdn-icons-png.flaticon.com/512/4825/4825112.png';
+}
+
 const fatherId = idCounter++, motherId = idCounter++;
-rawNodes.push({ id: fatherId, label: rootFather.name, level: 0, gender: "male", originalLabel: rootFather.name, birth: rootFather.birth, color: '#34495e', size: 40, groupKey: 'main', spouseName: rootMother.name });
-rawNodes.push({ id: motherId, label: rootMother.name, level: 0, gender: "female", originalLabel: rootMother.name, birth: rootMother.birth, color: '#34495e', size: 40, groupKey: 'main', spouseName: rootFather.name });
+rawNodes.push({ ...rootFather, id: fatherId, label: rootFather.name, level: 0, originalLabel: rootFather.name, color: '#2c3e50', size: 55, groupKey: 'main', spouseName: rootMother.name });
+rawNodes.push({ ...rootMother, id: motherId, label: rootMother.name, level: 0, originalLabel: rootMother.name, color: '#2c3e50', size: 55, groupKey: 'main', spouseName: rootFather.name });
 rawEdges.push({ from: fatherId, to: motherId, type: "spouse" });
 
-// اقوام
 rootRelatives.forEach(rel => {
     const relId = idCounter++, spouseId = idCounter++;
-    rawNodes.push({ id: relId, label: rel.name, level: 0, gender: rel.gender, originalLabel: rel.name, birth: rel.birth, color: '#7f8c8d', size: 30, groupKey: 'relative', spouseName: rel.spouse.name });
-    rawNodes.push({ id: spouseId, label: rel.spouse.name, level: 0, gender: rel.spouse.gender, originalLabel: rel.spouse.name, birth: rel.spouse.birth, color: '#95a5a6', size: 30, groupKey: 'relative', spouseName: rel.name });
+    rawNodes.push({ ...rel, id: relId, label: rel.name, level: 0, originalLabel: rel.name, color: '#95a5a6', size: 40, groupKey: 'relative', spouseName: rel.spouse.name });
+    rawNodes.push({ ...rel.spouse, id: spouseId, label: rel.spouse.name, level: 0, originalLabel: rel.spouse.name, color: '#bdc3c7', size: 40, groupKey: 'relative', spouseName: rel.name });
     rawEdges.push({ from: relId, to: spouseId, type: "spouse" });
     if(rel.relatedTo === 'father') rawEdges.push({ from: fatherId, to: relId, type: "sibling_link" });
     else rawEdges.push({ from: motherId, to: relId, type: "sibling_link" });
 });
 
-// فرزندان و نوه‌ها
 childrenList.forEach((child, index) => {
     const childId = idCounter++;
     const myColor = branchColors[index % branchColors.length];
-    rawNodes.push({ id: childId, label: child.name, level: 1, gender: child.gender, originalLabel: child.name, birth: child.birth, color: myColor, size: 25, branch: childId, groupKey: 'child' });
+    rawNodes.push({ ...child, id: childId, label: child.name, level: 1, originalLabel: child.name, color: myColor, size: 40, branch: childId, groupKey: 'child' });
     rawEdges.push({ from: fatherId, to: childId, type: "child" });
     rawEdges.push({ from: motherId, to: childId, type: "child" });
     for (let i = 1; i <= GRANDCHILDREN_PER_CHILD; i++) {
@@ -48,12 +52,11 @@ childrenList.forEach((child, index) => {
         const gcName = `فرزند ${i}ِ ${child.name}`;
         const gcGender = Math.random() > 0.5 ? "male" : "female";
         const gcBirth = child.birth + 25 + Math.floor(Math.random() * 10);
-        rawNodes.push({ id: gcId, label: gcName, level: 2, gender: gcGender, originalLabel: gcName, birth: gcBirth, color: myColor, size: 15, branch: childId, groupKey: 'grandchild' });
+        rawNodes.push({ id: gcId, label: gcName, level: 2, gender: gcGender, originalLabel: gcName, birth: gcBirth, color: myColor, size: 28, branch: childId, groupKey: 'grandchild' });
         rawEdges.push({ from: childId, to: gcId, type: "child" });
     }
 });
 
-// --- 3. تنظیمات سیستم ---
 let network = null, timeline = null, isDarkMode = false, currentLayout = "UD", currentUserId = null;
 const relationshipMap = {};
 rawNodes.forEach(n => relationshipMap[n.id] = { parents: [], children: [], spouses: [], siblings: [] });
@@ -62,15 +65,7 @@ rawEdges.forEach(e => {
     else if (e.type === 'spouse') { relationshipMap[e.from].spouses.push(e.to); relationshipMap[e.to].spouses.push(e.from); }
     else if (e.type === 'sibling_link') { relationshipMap[e.from].siblings.push(e.to); relationshipMap[e.to].siblings.push(e.from); }
 });
-rawNodes.forEach(n => {
-    const parents = relationshipMap[n.id].parents;
-    if (parents.length > 0) {
-        const siblings = parents.flatMap(p => relationshipMap[p].children).filter(id => id !== n.id);
-        relationshipMap[n.id].siblings.push(...[...new Set(siblings)]);
-    }
-});
 
-// پر کردن منوها
 const filterSelect = document.getElementById('view-filter');
 const identitySelect = document.getElementById('user-identity');
 const pathFrom = document.getElementById('path-from');
@@ -82,147 +77,154 @@ childrenList.forEach(child => {
     filterSelect.appendChild(option);
 });
 
-// پر کردن لیست افراد (برای هویت و محاسبه‌گر)
 rawNodes.forEach(n => {
     let opt1 = document.createElement("option"); opt1.value = n.id; opt1.text = n.originalLabel; identitySelect.appendChild(opt1);
     let opt2 = document.createElement("option"); opt2.value = n.id; opt2.text = n.originalLabel; pathFrom.appendChild(opt2);
     let opt3 = document.createElement("option"); opt3.value = n.id; opt3.text = n.originalLabel; pathTo.appendChild(opt3);
 });
 
-// تابع ساخت تولتیپ
-function generateTooltip(node) {
-    const container = document.createElement("div");
-    container.style.cssText = "padding:8px; text-align:right; direction:rtl;";
-    container.innerHTML = `
-        <div style="font-weight:bold; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px; margin-bottom:5px; color:${node.color}">
-            ${node.originalLabel}
+function generateTooltipHTML(node) {
+    const currentYear = 1403;
+    const age = currentYear - node.birth;
+    const childCount = relationshipMap[node.id] ? relationshipMap[node.id].children.length : 0;
+    const imageSrc = getAvatar(node);
+    
+    return `
+        <div class="tooltip-header" style="background:${node.color}">
+            <img src="${imageSrc}" class="tooltip-img">
+            <div class="tooltip-title">${node.originalLabel}</div>
         </div>
-        <div style="font-size:0.9em; line-height:1.6;">
-            🎂 تولد: ${node.birth}<br>
-            ${node.spouseName ? `💍 همسر: ${node.spouseName}<br>` : ''}
-            📍 سطح: ${node.level === 0 ? 'نسل اول' : node.level === 1 ? 'فرزند' : 'نوه'}
+        <div class="tooltip-body">
+            <div class="t-row"><i class="fas fa-venus-mars"></i> <span>${node.gender === 'male' ? 'مرد' : 'زن'}</span></div>
+            <div class="t-row"><i class="fas fa-birthday-cake"></i> <span>${node.birth} (سن: ${age})</span></div>
+            ${node.spouseName ? `<div class="t-row"><i class="fas fa-ring"></i> <span>همسر: ${node.spouseName}</span></div>` : ''}
+            <div class="t-row"><i class="fas fa-child"></i> <span>تعداد فرزند: ${childCount}</span></div>
+            <div class="t-badge" style="background:${node.color}20; color:${node.color}">
+                ${node.level === 0 ? 'نسل اول' : node.level === 1 ? 'نسل دوم' : 'نسل سوم'}
+            </div>
         </div>`;
-    return container;
 }
 
 const nodes = new vis.DataSet([]);
 const edges = new vis.DataSet([]);
 
-// --- 4. گراف ---
 function initNetwork() {
     const container = document.getElementById('mynetwork');
     const data = { nodes: nodes, edges: edges };
+    
     const options = {
-        nodes: { borderWidth: 2, shadow: true },
-        edges: { smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.5 } },
+        nodes: {
+            shape: 'circularImage',
+            brokenImage: 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
+            borderWidth: 4, 
+            color: { border: '#fff', background: '#fff', highlight: { border: '#2563eb', background: '#fff' } },
+            font: { 
+                face: 'Vazirmatn', size: 16, color: '#000000', background: 'rgba(255, 255, 255, 0.85)',
+                strokeWidth: 0, vadjust: 0
+            },
+            shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 10, x: 5, y: 5 }
+        },
+        edges: {
+            smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.5 },
+            color: { color: '#bdc3c7', highlight: '#2563eb' },
+            width: 2
+        },
         layout: { 
             hierarchical: { 
                 direction: currentLayout, sortMethod: 'directed', 
-                nodeSpacing: 100, levelSeparation: 200, blockShifting: true, edgeMinimization: true
+                nodeSpacing: 160, levelSeparation: 200, 
+                blockShifting: true, edgeMinimization: true
             } 
         },
         physics: false,
-        interaction: { hover: true, dragNodes: true, tooltipDelay: 50, zoomView: true }
+        interaction: { hover: true, dragNodes: true, tooltipDelay: 0, zoomView: true }
     };
 
     document.fonts.ready.then(function () {
         network = new vis.Network(container, data, options);
+        
         network.on("afterDrawing", function() {
              const loader = document.getElementById('loading-screen');
              if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500); }
         });
+        
+        const tooltipEl = document.getElementById('custom-tooltip');
+        
+        network.on("hoverNode", function (params) {
+            const nodeId = params.node;
+            const node = rawNodes.find(n => n.id === nodeId);
+            if(node) {
+                tooltipEl.innerHTML = generateTooltipHTML(node);
+                tooltipEl.style.display = 'block';
+                const nodePosition = network.getPositions([nodeId])[nodeId];
+                const domPosition = network.canvasToDOM(nodePosition);
+                tooltipEl.style.left = domPosition.x + 'px';
+                tooltipEl.style.top = (domPosition.y - 40) + 'px';
+            }
+        });
+
+        network.on("blurNode", function () { tooltipEl.style.display = 'none'; });
+        network.on("dragStart", () => tooltipEl.style.display = 'none');
+        network.on("zoom", () => tooltipEl.style.display = 'none');
         network.on("click", function (params) { if (params.nodes.length > 0) handleNodeClick(params.nodes[0]); });
         network.on("doubleClick", function(params) { if (params.nodes.length > 0) toggleBranch(params.nodes[0]); });
         updateView();
     });
 }
 
-// --- 5. محاسبه‌گر نسبت (BFS) ---
-function calculatePath() {
+function calculatePath() { 
     const startId = parseInt(document.getElementById('path-from').value);
     const endId = parseInt(document.getElementById('path-to').value);
     const resultDiv = document.getElementById('path-result');
-
     if (!startId || !endId) { resultDiv.innerHTML = "لطفاً دو نفر را انتخاب کنید."; return; }
     if (startId === endId) { resultDiv.innerHTML = "هر دو نفر یکی هستند!"; return; }
-
-    const queue = [startId];
-    const visited = { [startId]: true };
-    const parentMap = {};
-    let found = false;
-
+    const queue = [startId]; const visited = { [startId]: true }; const parentMap = {}; let found = false;
     while (queue.length > 0) {
-        const current = queue.shift();
-        if (current === endId) { found = true; break; }
-        const data = relationshipMap[current];
-        const neighbors = [...data.parents, ...data.children, ...data.spouses, ...data.siblings];
-        
-        for (let nId of neighbors) {
-            if (!visited[nId]) {
-                visited[nId] = true;
-                parentMap[nId] = current;
-                queue.push(nId);
-            }
-        }
+        const current = queue.shift(); if (current === endId) { found = true; break; }
+        const data = relationshipMap[current]; const neighbors = [...data.parents, ...data.children, ...data.spouses, ...data.siblings];
+        for (let nId of neighbors) { if (!visited[nId]) { visited[nId] = true; parentMap[nId] = current; queue.push(nId); } }
     }
-
     if (found) {
-        const path = [];
-        let curr = endId;
-        while (curr !== startId) { path.push(curr); curr = parentMap[curr]; }
-        path.push(startId);
-        path.reverse();
-        
-        // هایلایت روی گراف
-        highlightPath(path);
-        
-        // نمایش متن
-        let html = "";
-        for (let i = 0; i < path.length - 1; i++) {
-            const u = rawNodes.find(n => n.id === path[i]);
-            html += `<div>🔽 ${u.originalLabel}</div>`;
-        }
-        const last = rawNodes.find(n => n.id === path[path.length-1]);
-        html += `<div>🏁 <b>${last.originalLabel}</b></div>`;
-        resultDiv.innerHTML = html;
-    } else {
-        resultDiv.innerHTML = "مسیری یافت نشد.";
-    }
+        const path = []; let curr = endId; while (curr !== startId) { path.push(curr); curr = parentMap[curr]; }
+        path.push(startId); path.reverse(); highlightPath(path);
+        let html = ""; for (let i = 0; i < path.length - 1; i++) { const u = rawNodes.find(n => n.id === path[i]); html += `<div style="margin-bottom:5px">🔽 ${u.originalLabel}</div>`; }
+        const last = rawNodes.find(n => n.id === path[path.length-1]); html += `<div>🏁 <b>${last.originalLabel}</b></div>`; resultDiv.innerHTML = html;
+    } else { resultDiv.innerHTML = "مسیری یافت نشد."; }
 }
 
 function highlightPath(pathIds) {
     const allN = nodes.get();
     nodes.update(allN.map(n => ({
         id: n.id,
-        color: pathIds.includes(n.id) ? { background: '#27ae60', border: '#1e8449' } : { background: '#eee', border: '#ddd' },
-        opacity: pathIds.includes(n.id) ? 1 : 0.2
+        opacity: pathIds.includes(n.id) ? 1 : 0.3,
+        size: pathIds.includes(n.id) ? 60 : rawNodes.find(rn=>rn.id===n.id).size
     })));
     network.fit({ nodes: pathIds, animation: true });
 }
 
-// --- 6. توابع کمکی ---
 function handleNodeClick(nodeId) {
     const node = rawNodes.find(n => n.id === nodeId);
     document.getElementById('profile-card').style.display = 'block';
     document.getElementById('p-name').innerText = node.originalLabel;
     document.getElementById('p-birth').innerText = node.birth;
     document.getElementById('p-spouse').innerText = node.spouseName || '-';
-    
     const img = document.getElementById('p-img');
-    img.innerHTML = node.gender === 'male' ? '<i class="fas fa-male"></i>' : '<i class="fas fa-female"></i>';
-    img.style.borderColor = node.color; img.style.color = node.color;
-    
+    img.innerHTML = `<img src="${getAvatar(node)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%">`;
+    img.style.border = `3px solid ${node.color}`;
     const badge = document.getElementById('p-rel-badge');
-    if(currentUserId) { badge.innerText = "محاسبه شده"; badge.style.background = node.color; } 
-    else { badge.innerText = "-"; badge.style.background = "#ccc"; }
+    badge.innerText = "جزئیات"; badge.style.background = node.color;
+    
+    // باز کردن سایدبار راست برای نمایش جزئیات
+    const sb = document.getElementById('sidebar');
+    if(sb.classList.contains('closed')) sb.classList.remove('closed');
 }
 
-function updateIdentity() {
+function updateIdentity() { 
     currentUserId = parseInt(document.getElementById('user-identity').value);
     const all = nodes.get();
     nodes.update(all.map(n => {
-        if(n.id === currentUserId) return { id: n.id, borderWidth: 4, size: n.size + 10, color: { border: '#f1c40f' } };
-        return { id: n.id, borderWidth: 2, size: rawNodes.find(rn=>rn.id===n.id).size, color: { border: isDarkMode ? '#2d2d2d' : 'white' } };
+        if(n.id === currentUserId) return { id: n.id, borderWidth: 6, color: { border: '#f1c40f' } };
+        return { id: n.id, borderWidth: 4, color: { border: '#fff' } };
     }));
 }
 
@@ -231,7 +233,6 @@ function toggleBranch(parentId) {
     if (children.length === 0) return;
     const firstChild = children[0];
     const isVisible = nodes.get(firstChild) !== null;
-
     if (isVisible) {
         const descendants = getAllDescendantsIds(parentId);
         nodes.remove(descendants);
@@ -239,19 +240,13 @@ function toggleBranch(parentId) {
         const descendants = getAllDescendantsIds(parentId);
         const currentIds = nodes.getIds();
         const toAdd = rawNodes.filter(n => descendants.includes(n.id) && !currentIds.includes(n.id)).map(n => ({
-            id: n.id, label: '', title: generateTooltip(n),
-            color: { background: n.color, border: isDarkMode ? '#2d2d2d' : 'white' },
-            shape: 'dot', size: n.size, level: n.level,
-            font: { face: 'Vazirmatn', size: 14, color: isDarkMode ? '#eee' : '#333', vadjust: n.size + 5 }
+            id: n.id, label: '', image: getAvatar(n),
+            color: { border: n.color }, shape: 'circularImage', size: n.size, level: n.level
         }));
         nodes.add(toAdd);
     }
 }
-function getAllDescendantsIds(id) {
-    let res = [];
-    relationshipMap[id].children.forEach(cid => { res.push(cid); res.push(...getAllDescendantsIds(cid)); });
-    return res;
-}
+function getAllDescendantsIds(id) { let res = []; relationshipMap[id].children.forEach(cid => { res.push(cid); res.push(...getAllDescendantsIds(cid)); }); return res; }
 
 function updateView() {
     const filterValue = document.getElementById('view-filter').value;
@@ -264,15 +259,21 @@ function updateView() {
     }
     const currentIds = nodes.getIds();
     nodes.remove(currentIds.filter(id => !allowedIds.includes(id)));
+    
     const nodesToAdd = rawNodes.filter(n => allowedIds.includes(n.id) && !currentIds.includes(n.id)).map(n => ({
-        id: n.id, label: n.level < 2 ? n.originalLabel : '', title: generateTooltip(n),
-        color: { background: n.color, border: 'white' }, shape: 'dot', size: n.size, level: n.level,
-        font: { face: 'Vazirmatn', size: 14, color: isDarkMode ? '#eee' : '#333', vadjust: n.size + 5 }
+        id: n.id, 
+        label: n.level < 2 ? n.originalLabel : '', 
+        image: getAvatar(n), 
+        color: { border: n.color }, 
+        size: n.size, 
+        level: n.level,
+        font: { background: 'rgba(255,255,255,0.85)', vadjust: 0, size: 16 }
     }));
     nodes.add(nodesToAdd);
+    
     const edgesToAdd = rawEdges.filter(e => allowedIds.includes(e.from) && allowedIds.includes(e.to)).map(e => ({
         from: e.from, to: e.to, dashes: e.type === 'spouse' || e.type === 'sibling_link',
-        color: e.type === 'spouse' ? '#555' : '#bdc3c7', width: e.type === 'spouse' ? 2 : 1
+        color: e.type === 'spouse' ? '#7f8c8d' : '#bdc3c7', width: e.type === 'spouse' ? 2 : 2
     }));
     edges.clear(); edges.add(edgesToAdd);
     if(network) network.fit();
@@ -282,7 +283,7 @@ function initTimeline() {
     const container = document.getElementById('mytimeline');
     const items = new vis.DataSet(rawNodes.map(n => ({
         id: n.id, content: n.originalLabel, start: new Date(n.birth + 621, 0, 1),
-        style: `background-color: ${n.color}; border-color: ${n.color}; color: white; border-radius: 4px; font-family: Vazirmatn; font-size: 12px;`
+        style: `background-color: ${n.color}; border-color: ${n.color}; color: white; border-radius: 4px; font-family: Vazirmatn; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);`
     })));
     const options = { locale: 'en', height: '100%', start: new Date(1920, 0, 1), end: new Date(2025, 0, 1), format: { minorLabels: d => (new Date(d).getFullYear() - 621).toString(), majorLabels: () => "" } };
     timeline = new vis.Timeline(container, items, options);
@@ -294,6 +295,7 @@ function toggleViewMode() {
     else { net.style.display = 'none'; time.style.display = 'block'; if (!timeline) initTimeline(); }
 }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('closed'); setTimeout(() => network && network.fit(), 400); }
+function toggleLeftPanel() { document.getElementById('left-panel').classList.toggle('closed'); setTimeout(() => network && network.fit(), 400); }
 function toggleDarkMode() { isDarkMode = !isDarkMode; document.body.classList.toggle('dark-mode'); updateView(); }
 function changeLayout() { currentLayout = document.getElementById('layout-direction').value; network.setOptions({ layout: { hierarchical: { direction: currentLayout } } }); network.fit();}
 function exportGraph() { const canvas = document.querySelector('#mynetwork canvas'); const link = document.createElement('a'); link.download = 'Tree.png'; link.href = canvas.toDataURL(); link.click(); }
