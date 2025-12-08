@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>پروژه ریشه - شجره‌نامه تعاملی</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700&display=swap');
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* پنل اصلی گراف */
+        #network-container {
+            flex-grow: 1;
+            position: relative;
+            background: #fff;
+        }
+
+        #mynetwork {
+            width: 100%;
+            height: 100%;
+            border-left: 1px solid #ddd;
+        }
+
+        /* پنل جزئیات (Sidebar) */
+        #sidebar {
+            width: 320px;
+            background: #ffffff;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h2 { margin: 0; color: #2c3e50; }
+        .header p { color: #7f8c8d; font-size: 0.9em; }
+
+        /* استایل پروفایل */
+        .profile-card {
+            text-align: center;
+            display: none; /* پیش‌فرض مخفی */
+            animation: fadeIn 0.5s;
+        }
+        
+        .profile-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: #aaa;
+            border: 3px solid #3498db;
+        }
+
+        .profile-name { font-weight: bold; font-size: 1.2em; color: #2c3e50; margin-bottom: 5px; }
+        .profile-role { color: #e67e22; font-size: 0.9em; margin-bottom: 15px; font-weight: bold; }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        .data-label { color: #7f8c8d; }
+        .data-value { font-weight: 500; }
+
+        .search-box {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            font-family: 'Vazirmatn';
+        }
+
+        /* دکمه‌های کنترل */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn:hover { background: #34495e; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="header">
+            <h2>🌳 پروژه ریشه</h2>
+            <p>شجره‌نامه خاندان بزرگ</p>
+        </div>
+
+        <input type="text" id="search" class="search-box" placeholder="جستجوی نام..." onkeyup="searchNode()">
+
+        <div id="empty-state" style="text-align: center; color: #999; margin-top: 50px;">
+            <i class="fas fa-mouse-pointer" style="font-size: 40px; margin-bottom: 10px;"></i>
+            <p>روی یکی از اعضا کلیک کنید تا مشخصاتش نمایش داده شود.</p>
+        </div>
+
+        <div id="profile-card" class="profile-card">
+            <div class="profile-img" id="p-img"><i class="fas fa-user"></i></div>
+            <div class="profile-name" id="p-name">نام فرد</div>
+            <div class="profile-role" id="p-role">نسبت</div>
+            
+            <div class="data-row">
+                <span class="data-label">سال تولد:</span>
+                <span class="data-value" id="p-birth">1360</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">شغل:</span>
+                <span class="data-value" id="p-job">آزاد</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">محل سکونت:</span>
+                <span class="data-value" id="p-loc">تهران</span>
+            </div>
+            <div style="margin-top: 20px; text-align: justify; font-size: 0.85em; line-height: 1.6; color: #555;" id="p-bio">
+                توضیحات مختصر در مورد فرد در اینجا قرار می‌گیرد...
+            </div>
+        </div>
+    </div>
+
+    <div id="network-container">
+        <div id="mynetwork"></div>
+        <div class="controls">
+            <button class="btn" onclick="network.fit()"><i class="fas fa-compress"></i> تمام صفحه</button>
+            <button class="btn" onclick="toggleLayout()"><i class="fas fa-sitemap"></i> تغییر چیدمان</button>
+        </div>
+    </div>
+
+<script type="text/javascript">
+    // --- 1. داده‌ها (اینجا می‌توانی چند همسری را تست کنی) ---
+    // level: 0 (پدربزرگ‌ها)، 1 (پدرها)، 2 (بچه‌ها) -> برای چیدمان درختی مهم است
+    
+    const nodesArray = [
+        // نسل اول (ریشه)
+        {id: 1, label: 'حاج احمد\n(بزرگ خاندان)', level: 0, group: 'male', info: {birth: '1300', job: 'کشاورز', loc: 'روستا', bio: 'بنیان‌گذار خاندان.'}},
+        // همسران
+        {id: 2, label: 'بی‌بی سکینه\n(همسر اول)', level: 0, group: 'female', info: {birth: '1305', job: 'خانه‌دار', loc: 'روستا', bio: ''}},
+        {id: 3, label: 'بی‌بی مریم\n(همسر دوم)', level: 0, group: 'female', info: {birth: '1315', job: 'معلم', loc: 'شهر', bio: ''}},
+
+        // نسل دوم (فرزندان همسر اول)
+        {id: 4, label: 'حسن\n(پدر)', level: 1, group: 'male', info: {birth: '1340', job: 'کارمند', loc: 'تهران', bio: 'پسر ارشد خانواده'}},
+        {id: 5, label: 'حسین\n(عمو)', level: 1, group: 'male', info: {birth: '1342', job: 'بازنشسته', loc: 'اصفهان', bio: ''}},
+        
+        // نسل دوم (فرزندان همسر دوم)
+        {id: 6, label: 'زهرا\n(عمه)', level: 1, group: 'female', info: {birth: '1350', job: 'پزشک', loc: 'شیراز', bio: ''}},
+
+        // همسر پدر من
+        {id: 7, label: 'مادر من', level: 1, group: 'female', info: {birth: '1345', job: 'خانه‌دار', loc: 'تهران', bio: ''}},
+
+        // نسل سوم (نوه‌ها)
+        {id: 8, label: 'من (علی)', level: 2, group: 'me', info: {birth: '1370', job: 'برنامه‌نویس', loc: 'تهران', bio: 'توسعه‌دهنده همین سایت!'}},
+        {id: 9, label: 'سارا\n(خواهر)', level: 2, group: 'female', info: {birth: '1375', job: 'دانشجو', loc: 'تهران', bio: ''}},
+        {id: 10, label: 'رضا\n(پسر عمه)', level: 2, group: 'male', info: {birth: '1372', job: 'معمار', loc: 'شیراز', bio: ''}},
+    ];
+
+    const edgesArray = [
+        // ازدواج‌های حاج احمد
+        {from: 1, to: 2, label: 'ازدواج', dashes: true, color: '#aaa'},
+        {from: 1, to: 3, label: 'ازدواج', dashes: true, color: '#aaa'},
+
+        // فرزندان حاج احمد و سکینه (همسر اول)
+        {from: 1, to: 4}, 
+        {from: 2, to: 4}, // حسن فرزند سکینه است
+        {from: 1, to: 5}, 
+        {from: 2, to: 5}, // حسین فرزند سکینه است
+
+        // فرزندان حاج احمد و مریم (همسر دوم)
+        {from: 1, to: 6}, 
+        {from: 3, to: 6}, // زهرا فرزند مریم است
+
+        // ازدواج پدر و مادر
+        {from: 4, to: 7, label: 'ازدواج', dashes: true, color: '#aaa'},
+
+        // فرزندان پدر و مادر
+        {from: 4, to: 8}, {from: 7, to: 8}, // من
+        {from: 4, to: 9}, {from: 7, to: 9}, // خواهر
+
+        // فرزندان عمه
+        {from: 6, to: 10}, // پسر عمه
+    ];
+
+    // --- 2. تنظیمات گرافیک (Vis.js) ---
+    var nodes = new vis.DataSet(nodesArray);
+    var edges = new vis.DataSet(edgesArray);
+
+    var container = document.getElementById('mynetwork');
+    var data = { nodes: nodes, edges: edges };
+
+    var options = {
+        nodes: {
+            shape: 'box',
+            margin: 10,
+            widthConstraint: { maximum: 120 },
+            font: { face: 'Vazirmatn', multi: 'html', size: 16 },
+            borderWidth: 0,
+            shadow: true
+        },
+        edges: {
+            width: 2,
+            smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.4 },
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+            color: { color: '#bdc3c7', highlight: '#2c3e50' }
+        },
+        layout: {
+            hierarchical: {
+                direction: 'UD', // Up-Down (از بالا به پایین)
+                sortMethod: 'directed', // مرتب‌سازی بر اساس جهت فلش‌ها
+                nodeSpacing: 150,
+                levelSeparation: 150
+            }
+        },
+        groups: {
+            male: { color: { background: '#ebf5fb', border: '#3498db' }, font: { color: '#2980b9' }, shapeProperties: { borderRadius: 4 } },
+            female: { color: { background: '#fdedec', border: '#e74c3c' }, font: { color: '#c0392b' }, shapeProperties: { borderRadius: 50 } }, // گردتر برای خانم‌ها
+            me: { color: { background: '#fff9c4', border: '#f1c40f' }, font: { size: 18, color: '#d35400' }, borderWidth: 2 }
+        },
+        interaction: { hover: true, tooltipDelay: 200 }
+    };
+
+    var network = new vis.Network(container, data, options);
+
+    // --- 3. رویداد کلیک (نمایش اطلاعات در سایدبار) ---
+    network.on("click", function (params) {
+        if (params.nodes.length > 0) {
+            var nodeId = params.nodes[0];
+            var person = nodes.get(nodeId);
+            
+            // پر کردن اطلاعات در سایدبار
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('profile-card').style.display = 'block';
+            
+            document.getElementById('p-name').innerText = person.label.replace('\n', ' ');
+            document.getElementById('p-role').innerText = getRoleName(person.group);
+            document.getElementById('p-birth').innerText = person.info.birth;
+            document.getElementById('p-job').innerText = person.info.job;
+            document.getElementById('p-loc').innerText = person.info.loc;
+            document.getElementById('p-bio').innerText = person.info.bio || 'توضیحات تکمیلی موجود نیست.';
+
+            // تغییر آیکون بر اساس جنسیت
+            const iconDiv = document.getElementById('p-img');
+            if (person.group === 'female') {
+                iconDiv.innerHTML = '<i class="fas fa-female" style="color: #e74c3c"></i>';
+                iconDiv.style.borderColor = '#e74c3c';
+            } else {
+                iconDiv.innerHTML = '<i class="fas fa-male" style="color: #3498db"></i>';
+                iconDiv.style.borderColor = '#3498db';
+            }
+
+        } else {
+            // کلیک روی فضای خالی
+            document.getElementById('empty-state').style.display = 'block';
+            document.getElementById('profile-card').style.display = 'none';
+        }
+    });
+
+    function getRoleName(group) {
+        if(group === 'me') return 'کاربر اصلی';
+        if(group === 'female') return 'عضو مونث خاندان';
+        return 'عضو مذکر خاندان';
+    }
+
+    // --- 4. تابع جستجو ---
+    function searchNode() {
+        var query = document.getElementById('search').value.toLowerCase();
+        var allNodes = nodes.get();
+        
+        // پیدا کردن نود
+        var foundNode = allNodes.find(n => n.label.replace('\n', ' ').toLowerCase().includes(query));
+        
+        if (foundNode && query.length > 0) {
+            network.selectNodes([foundNode.id]);
+            network.focus(foundNode.id, { scale: 1.2, animation: true });
+        } else {
+            network.unselectAll();
+            network.fit();
+        }
+    }
+    
+    // --- 5. تغییر لی‌اوت (جهت تست) ---
+    function toggleLayout() {
+        var opts = { layout: { hierarchical: { enabled: !options.layout.hierarchical.enabled } } };
+        // برای سادگی در این دمو فقط ریلود میکنیم، ولی میشه داینامیک عوض کرد
+        alert("برای تغییر کامل چیدمان بین درختی و آزاد، کد نیاز به تنظیمات پیشرفته دارد. فعلا فقط زوم ریست می‌شود.");
+        network.fit();
+    }
+
+</script>
+
+</body>
+</html>

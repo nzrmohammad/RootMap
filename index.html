@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شجره‌نامه هوشمند خاندان (نسخه نهایی)</title>
+    
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
+    <link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>در حال ترسیم شجره‌نامه...</p>
+    </div>
+
+    <header id="app-header">
+        <div class="brand">
+            <i class="fas fa-tree"></i>
+            <span>پروژه ریشه</span>
+        </div>
+        <div class="header-tools">
+            <button class="header-btn" onclick="toggleSidebar()" title="منو"><i class="fas fa-bars"></i></button>
+            <button class="header-btn" onclick="toggleDarkMode()" title="تم"><i class="fas fa-moon"></i></button>
+            <button class="header-btn" onclick="toggleViewMode()" title="تایم‌لاین"><i class="fas fa-clock"></i></button>
+            <button class="header-btn" onclick="exportGraph()" title="عکس"><i class="fas fa-camera"></i></button>
+        </div>
+    </header>
+
+    <div class="main-wrapper">
+        <div id="sidebar" class="open">
+            
+            <div class="control-group">
+                <label>فیلتر نمایش:</label>
+                <select id="view-filter" onchange="updateView()">
+                    <option value="main_family">خاندان اصلی (امیرحمزه و ماه‌خاور)</option>
+                    <option value="all">کل اقوام (شامل برادر/خواهرها)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>جهت نمودار:</label>
+                <select id="layout-direction" onchange="changeLayout()">
+                    <option value="UD" selected>درختی (بالا به پایین)</option>
+                    <option value="RL">ستونی (راست به چپ)</option>
+                </select>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="control-group">
+                <label style="color:var(--accent-color)">هویت شما:</label>
+                <select id="user-identity" onchange="updateIdentity()">
+                    <option value="" disabled selected>انتخاب کنید...</option>
+                </select>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="path-finder-box">
+                <div class="pf-title"><i class="fas fa-calculator"></i> محاسبه نسبت دو نفر</div>
+                
+                <label>مبدا:</label>
+                <select id="path-from"><option value="">انتخاب...</option></select>
+                
+                <label style="margin-top:5px">مقصد:</label>
+                <select id="path-to"><option value="">انتخاب...</option></select>
+                
+                <button class="btn-calc" onclick="calculatePath()">محاسبه مسیر</button>
+                <div id="path-result"></div>
+            </div>
+
+            <div class="divider"></div>
+            <input type="text" id="search" class="search-box" placeholder="جستجوی نام..." onkeyup="searchNode()">
+
+            <div class="hint-box">
+                <small>دابل کلیک روی دایره: باز/بسته کردن<br>نگه داشتن موس: جزئیات</small>
+            </div>
+
+            <div id="profile-card" class="profile-card">
+                <div class="profile-avatar" id="p-img"></div>
+                <div class="profile-name" id="p-name">-</div>
+                <div class="relationship-badge" id="p-rel-badge">...</div>
+                <div class="data-row">
+                    <span>تولد:</span>
+                    <span id="p-birth">-</span>
+                </div>
+                <div class="data-row">
+                    <span>همسر:</span>
+                    <span id="p-spouse">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-area">
+            <div id="mynetwork"></div>
+            <div id="timeline-wrapper">
+                <div id="mytimeline"></div>
+            </div>
+            
+            <div class="zoom-controls">
+                <button onclick="network.fit()"><i class="fas fa-expand"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
