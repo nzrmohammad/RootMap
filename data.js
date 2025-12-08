@@ -3,18 +3,18 @@ const genealogyData = {
     spouse: "نامشخص",
     children: [
         {
-            name: "سادات", gender: "male", spouse: "ماه خاور",
+            name: "سادات", gender: "male", spouse: "",
             children: [
                 {
-                    name: "گوهر", gender: "female", spouse: "1",
+                    name: "گوهر", gender: "female", spouse: "همسر گوهر",
                     children: ["محمدحسین", "رخسار", "حسین", "هومان", "فریبرز", "بیژن"]
                 },
                 {
-                    name: "زلیخا", gender: "female", spouse: "2",
+                    name: "زلیخا", gender: "female", spouse: "همسر زلیخا",
                     children: ["شکرالله", "سیف الله", "زیور", "هدایت", "کرامت", "مسیح"]
                 },
                 {
-                    name: "امیرحمزه", gender: "male", spouse: "3",
+                    name: "امیرحمزه", gender: "male", spouse: "ماه",
                     children: [
                         {
                             name: "عطاپور", gender: "male", spouse: "فریده",
@@ -51,23 +51,23 @@ const genealogyData = {
                     ]
                 },
                 {
-                    name: "ماه آفرین", gender: "female", spouse: "4",
+                    name: "ماه آفرین", gender: "female", spouse: "همسر افرین",
                     children: ["منوچهر"]
                 },
                 {
-                    name: "جیران", gender: "female", spouse: "5",
+                    name: "جیران", gender: "female", spouse: "همسر جیران",
                     children: ["شهربانو", "حوری", "فرض الله", "فاطمه", "زرین تاج", "زینب", "ایرج", "مملکت", "رامین"]
                 },
                 {
-                    name: "زلزله", gender: "female", spouse: "6",
+                    name: "زلزله", gender: "female", spouse: "همسر زلزله",
                     children: ["اسدالله", "افروز", "کرم الله", "افسر", "حبیب"]
                 },
                 {
-                    name: "امیرحسین", gender: "male", spouse: "7",
+                    name: "امیرحسین", gender: "male", spouse: "همسر امیرحسین",
                     children: ["پروانه", "حسین", "شاپور", "هوشنگ", "پوران", "بیژن", "آذر", "هما"]
                 },
                 {
-                    name: "آفتاب", gender: "female", spouse: "8",
+                    name: "آفتاب", gender: "female", spouse: "همسر آفتاب",
                     children: ["پیران", "فریده", "هومان"]
                 }
             ]

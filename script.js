@@ -24,14 +24,13 @@ function getAvatar(gender) {
 
 // --- 2. ساخت گراف (با نود میانی T شکل) ---
 
-// جایگزین تابع buildGraph شود
 function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchId = null) {
     const nodeId = idCounter++;
     const gender = data.gender || guessGender(data.name);
     
     if (level === 0) expandedNodes.add(nodeId);
 
-    // افزودن خود فرد
+    // 1. ساخت نود اصلی (بدون ارجاع به همسر در اینجا)
     rawNodes.push({
         id: nodeId,
         label: data.name,
@@ -43,29 +42,31 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         branch: branchId || nodeId
     });
 
-    // اتصال به والد (مستقیم)
+    // اتصال به والد
     if (parentId !== null) {
         rawEdges.push({ from: parentId, to: nodeId, type: 'blood' });
     }
 
+    // 2. بررسی و ساخت همسر (رفع ارور: همه چیز داخل این شرط است)
     if (data.children && data.children.length > 0) {
-        // افزودن همسر
-        const spouseId = idCounter++;
+        const spouseId = idCounter++; // تعریف شناسه همسر همینجاست
         const spouseName = data.spouse || "نامشخص";
         const spouseGender = gender === 'male' ? 'female' : 'male';
         
+        // ساخت نود همسر
         rawNodes.push({
             id: spouseId,
             label: spouseName,
             originalLabel: spouseName === "نامشخص" ? "همسر" : spouseName,
-            level: level, 
+            level: level, // هم‌سطح با شوهر/زن
             gender: spouseGender,
             color: '#95a5a6',
             size: level === 0 ? 60 : 40,
-            isSpouse: true
+            isSpouse: true,
+            group: 'spouse_group' // کمک به دسته‌بندی
         });
 
-        // اتصال همسر به فرد اصلی (همتراز)
+        // اتصال همسر به فرد اصلی
         rawEdges.push({ from: nodeId, to: spouseId, type: 'spouse' });
 
         // پردازش فرزندان
@@ -80,8 +81,7 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
                 childColor = branchColors[index % branchColors.length];
                 currentBranch = null; 
             }
-
-            // نکته مهم: فرزندان مستقیماً به نود اصلی (nodeId) وصل می‌شوند
+            // فرزندان به والد اصلی وصل می‌شوند
             buildGraph(childObj, nodeId, level + 1, childColor, currentBranch);
         });
     }
@@ -225,7 +225,7 @@ function initNetwork() {
         },
         layout: { 
             hierarchical: { 
-                direction: "UD", sortMethod: 'directed', 
+                direction: "UD", sortMethod: 'hubsize', 
                 nodeSpacing: 85, 
                 levelSeparation: 200, 
                 blockShifting: true, edgeMinimization: true,
