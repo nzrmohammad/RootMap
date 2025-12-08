@@ -73,12 +73,6 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
             return typeof child === 'string' ? { name: child, gender: guessGender(child) } : { ...child, gender: child.gender || guessGender(child.name) };
         });
 
-        processedChildren.sort((a, b) => {
-            if (a.gender === 'female' && b.gender === 'male') return -1;
-            if (a.gender === 'male' && b.gender === 'female') return 1;
-            return 0;
-        });
-
         processedChildren.forEach((childObj, index) => {
             let childColor = color;
             let currentBranch = branchId;
@@ -106,17 +100,31 @@ rawNodes.forEach(n => relationshipMap[n.id] = { parents: [], children: [], spous
 const marriageInfo = {}; 
 rawNodes.filter(n => n.isMarriageNode).forEach(n => marriageInfo[n.id] = { parents: [], children: [] });
 
+// --- جایگزین در بخش 3 فایل script.js ---
+
 rawEdges.forEach(e => {
+    // 1. ثبت رابطه همسری (این بخش در کد شما نبود)
+    if (e.type === 'spouse') {
+        if (relationshipMap[e.from]) relationshipMap[e.from].spouses.push(e.to);
+        if (relationshipMap[e.to]) relationshipMap[e.to].spouses.push(e.from);
+    }
+
+    // 2. ثبت رابطه ازدواج (نود میانی)
     if (e.type === 'marriage') {
         if(marriageInfo[e.to]) marriageInfo[e.to].parents.push(e.from);
     }
+    
+    // 3. ثبت رابطه خونی (والد - فرزند)
     if (e.type === 'blood') {
         const fromNode = rawNodes.find(n => n.id === e.from);
+        
+        // اگر والد یک نود میانی ازدواج است
         if (fromNode && fromNode.isMarriageNode) {
             if(marriageInfo[e.from]) marriageInfo[e.from].children.push(e.to);
         } else {
-             relationshipMap[e.to].parents.push(e.from);
-             relationshipMap[e.from].children.push(e.to);
+             // اتصال مستقیم والد به فرزند (حالت استاندارد شما)
+             if (relationshipMap[e.to]) relationshipMap[e.to].parents.push(e.from);
+             if (relationshipMap[e.from]) relationshipMap[e.from].children.push(e.to);
         }
     }
 });
@@ -218,7 +226,7 @@ function initNetwork() {
         layout: { 
             hierarchical: { 
                 direction: "UD", sortMethod: 'directed', 
-                nodeSpacing: 250, 
+                nodeSpacing: 85, 
                 levelSeparation: 200, 
                 blockShifting: true, edgeMinimization: true,
                 parentCentralization: true 
@@ -267,13 +275,18 @@ function initNetwork() {
     });
 }
 
-// محاسبه نودهای قابل نمایش (برای باز و بسته کردن)
+// --- جایگزین تابع getVisibleIds در script.js ---
+
 function getVisibleIds(rootId, visibleSet = new Set()) {
     visibleSet.add(rootId);
     
-    if (expandedNodes.has(rootId)) {
+    // اصلاح: همسر همیشه نمایش داده شود (مستقل از باز/بسته بودن شاخه)
+    if (relationshipMap[rootId] && relationshipMap[rootId].spouses) {
         relationshipMap[rootId].spouses.forEach(spouseId => visibleSet.add(spouseId));
-        // اضافه کردن نودهای میانی برای دیده شدن خط اتصال
+    }
+
+    // شرط باز بودن فقط برای دیدن فرزندان اعمال شود
+    if (expandedNodes.has(rootId)) {
         if(relationshipMap[rootId].marriageNodes) {
              relationshipMap[rootId].marriageNodes.forEach(mId => visibleSet.add(mId));
         }
