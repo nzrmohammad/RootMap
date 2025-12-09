@@ -10,7 +10,6 @@ const relationshipMap = {}; // نقشه روابط برای دسترسی سری�
 // --- 1. توابع کمکی ---
 
 function guessGender(name) {
-    // لیست کمکی برای تشخیص جنسیت در صورت نبودن در دیتا
     const femaleNames = ["گوهر", "زلیخا", "ماه آفرین", "جیران", "آفتاب", "نوشی", "ناهید", "فرانک", "رخسار", "زیور", "شهربانو", "حوری", "فاطمه", "زرین تاج", "زینب", "مملکت", "افروز", "افسر", "پروانه", "پوران", "آذر", "هما", "فریده", "پریسا", "فرزانه", "طیبه", "نجمه", "آیلار", "پروین", "پروش", "کفایت", "سارا", "رویا", "المیرا", "زهرا", "زهره", "الناز", "کبری", "سمیه", "مرضیه", "فریبا", "تهمینه", "مریم"];
     if (femaleNames.includes(name)) return 'female';
     return 'male';
@@ -22,7 +21,7 @@ function getAvatar(gender) {
         : 'https://cdn-icons-png.flaticon.com/512/4825/4825112.png';
 }
 
-// --- 2. ساخت گراف (با نود میانی T شکل) ---
+// --- 2. ساخت گراف (اصلاح شده) ---
 
 function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchId = null) {
     const nodeId = idCounter++;
@@ -30,7 +29,7 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
     
     if (level === 0) expandedNodes.add(nodeId);
 
-    // 1. ساخت نود اصلی (بدون ارجاع به همسر در اینجا)
+    // 1. ساخت نود اصلی
     rawNodes.push({
         id: nodeId,
         label: data.name,
@@ -42,34 +41,48 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         branch: branchId || nodeId
     });
 
-    // اتصال به والد
+    // اتصال به والد (رابطه خونی)
     if (parentId !== null) {
         rawEdges.push({ from: parentId, to: nodeId, type: 'blood' });
     }
 
-    // 2. بررسی و ساخت همسر (رفع ارور: همه چیز داخل این شرط است)
-    if (data.children && data.children.length > 0) {
-        const spouseId = idCounter++; // تعریف شناسه همسر همینجاست
-        const spouseName = data.spouse || "نامشخص";
+    // 2. ساخت نود همسر
+    if (data.spouse && data.spouse !== "نامشخص" && data.spouse !== "") {
+        const spouseId = idCounter++;
+        const spouseName = data.spouse;
         const spouseGender = gender === 'male' ? 'female' : 'male';
         
-        // ساخت نود همسر
         rawNodes.push({
             id: spouseId,
             label: spouseName,
-            originalLabel: spouseName === "نامشخص" ? "همسر" : spouseName,
-            level: level, // هم‌سطح با شوهر/زن
+            originalLabel: spouseName,
+            level: level, 
             gender: spouseGender,
             color: '#95a5a6',
             size: level === 0 ? 60 : 40,
             isSpouse: true,
-            group: 'spouse_group' // کمک به دسته‌بندی
+            group: 'spouse_group'
         });
 
-        // اتصال همسر به فرد اصلی
+        // اتصال همسر به فرد اصلی (خط‌چین قرمز)
         rawEdges.push({ from: nodeId, to: spouseId, type: 'spouse' });
 
-        // پردازش فرزندان
+        // >>> ترفند اصلی اینجاست <<<
+        // یک اتصال نامرئی از والدِ اصلی به همسر فرزند ایجاد می‌کنیم
+        // این کار باعث می‌شود همسر دقیقاً کنار شوهر/زن قرار بگیرد
+        if (parentId !== null) {
+            rawEdges.push({ 
+                from: parentId, 
+                to: spouseId, 
+                type: 'ghost', // نوع جدید
+                hidden: true,   // مخفی کردن خط
+                physics: false 
+            });
+        }
+    }
+
+    // 3. پردازش فرزندان
+    if (data.children && data.children.length > 0) {
         let processedChildren = data.children.map(child => {
             return typeof child === 'string' ? { name: child, gender: guessGender(child) } : { ...child, gender: child.gender || guessGender(child.name) };
         });
@@ -77,11 +90,11 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         processedChildren.forEach((childObj, index) => {
             let childColor = color;
             let currentBranch = branchId;
+            
             if (level === 0) {
                 childColor = branchColors[index % branchColors.length];
                 currentBranch = null; 
             }
-            // فرزندان به والد اصلی وصل می‌شوند
             buildGraph(childObj, nodeId, level + 1, childColor, currentBranch);
         });
     }
@@ -94,54 +107,23 @@ if (typeof genealogyData !== 'undefined') {
     alert("خطا: فایل data.js بارگذاری نشده است!");
 }
 
-// --- 3. پردازش روابط برای منطق برنامه ---
-rawNodes.forEach(n => relationshipMap[n.id] = { parents: [], children: [], spouses: [], marriageNodes: [] });
-
-const marriageInfo = {}; 
-rawNodes.filter(n => n.isMarriageNode).forEach(n => marriageInfo[n.id] = { parents: [], children: [] });
-
-// --- جایگزین در بخش 3 فایل script.js ---
+// --- 3. پردازش روابط برای منطق برنامه (ساده‌سازی شده) ---
+// مقداردهی اولیه مپ
+rawNodes.forEach(n => relationshipMap[n.id] = { parents: [], children: [], spouses: [] });
 
 rawEdges.forEach(e => {
-    // 1. ثبت رابطه همسری (این بخش در کد شما نبود)
+    // ثبت رابطه همسری
     if (e.type === 'spouse') {
         if (relationshipMap[e.from]) relationshipMap[e.from].spouses.push(e.to);
         if (relationshipMap[e.to]) relationshipMap[e.to].spouses.push(e.from);
     }
 
-    // 2. ثبت رابطه ازدواج (نود میانی)
-    if (e.type === 'marriage') {
-        if(marriageInfo[e.to]) marriageInfo[e.to].parents.push(e.from);
-    }
-    
-    // 3. ثبت رابطه خونی (والد - فرزند)
+    // ثبت رابطه خونی (والد - فرزند)
     if (e.type === 'blood') {
-        const fromNode = rawNodes.find(n => n.id === e.from);
-        
-        // اگر والد یک نود میانی ازدواج است
-        if (fromNode && fromNode.isMarriageNode) {
-            if(marriageInfo[e.from]) marriageInfo[e.from].children.push(e.to);
-        } else {
-             // اتصال مستقیم والد به فرزند (حالت استاندارد شما)
-             if (relationshipMap[e.to]) relationshipMap[e.to].parents.push(e.from);
-             if (relationshipMap[e.from]) relationshipMap[e.from].children.push(e.to);
-        }
+        // اتصال مستقیم والد به فرزند
+        if (relationshipMap[e.to]) relationshipMap[e.to].parents.push(e.from);
+        if (relationshipMap[e.from]) relationshipMap[e.from].children.push(e.to);
     }
-});
-
-Object.keys(marriageInfo).forEach(midStr => {
-    const mid = parseInt(midStr);
-    const info = marriageInfo[mid];
-    
-    info.parents.forEach(p1 => {
-        relationshipMap[p1].children.push(...info.children);
-        relationshipMap[p1].marriageNodes.push(mid);
-        info.parents.forEach(p2 => { if(p1 !== p2) relationshipMap[p1].spouses.push(p2); });
-    });
-
-    info.children.forEach(childId => {
-        relationshipMap[childId].parents.push(...info.parents);
-    });
 });
 
 // --- 4. رابط کاربری و Vis.js ---
@@ -155,11 +137,12 @@ const pathTo = document.getElementById('path-to');
 if(filterSelect && typeof genealogyData !== 'undefined') {
     filterSelect.innerHTML = '<option value="all">نمایش کل خاندان</option>';
     genealogyData.children.forEach(child => {
-        const node = rawNodes.find(n => n.originalLabel === child.name);
+        // پیدا کردن نود مربوط به سرشاخه
+        const node = rawNodes.find(n => n.originalLabel === (typeof child === 'string' ? child : child.name));
         if(node) {
             let option = document.createElement("option"); 
             option.value = node.id; 
-            option.text = `خاندان ${child.name}`; 
+            option.text = `خاندان ${node.originalLabel}`; 
             option.style.color = node.color; 
             option.style.fontWeight = 'bold';
             filterSelect.appendChild(option);
@@ -167,7 +150,8 @@ if(filterSelect && typeof genealogyData !== 'undefined') {
     });
 }
 
-rawNodes.filter(n => !n.isSpouse && !n.isMarriageNode).forEach(n => {
+// پر کردن لیست‌ها با افراد اصلی (غیر همسر)
+rawNodes.filter(n => !n.isSpouse).forEach(n => {
     let opt1 = document.createElement("option"); opt1.value = n.id; opt1.text = n.originalLabel; identitySelect.appendChild(opt1);
     let opt2 = document.createElement("option"); opt2.value = n.id; opt2.text = n.originalLabel; pathFrom.appendChild(opt2);
     let opt3 = document.createElement("option"); opt3.value = n.id; opt3.text = n.originalLabel; pathTo.appendChild(opt3);
@@ -175,13 +159,12 @@ rawNodes.filter(n => !n.isSpouse && !n.isMarriageNode).forEach(n => {
 
 // تولید HTML برای تولتیپ
 function generateTooltipHTML(node) {
-    if (node.isSpouse || node.isMarriageNode) return '';
+    if (node.isSpouse) return '';
     const childCount = relationshipMap[node.id] ? relationshipMap[node.id].children.length : 0;
     const imageSrc = getAvatar(node.gender);
     const spouseId = relationshipMap[node.id].spouses[0];
     const spouseName = spouseId ? rawNodes.find(n => n.id === spouseId).originalLabel : '-';
     
-    // رنگ هدر بر اساس جنسیت
     const genderColor = node.gender === 'male' ? '#2563eb' : '#e11d48';
 
     return `
@@ -225,11 +208,14 @@ function initNetwork() {
         },
         layout: { 
             hierarchical: { 
-                direction: "UD", sortMethod: 'hubsize', 
-                nodeSpacing: 85, 
-                levelSeparation: 200, 
-                blockShifting: true, edgeMinimization: true,
-                parentCentralization: true 
+                direction: "UD", 
+                sortMethod: 'hubsize', // تغییر برای نظم بهتر
+                nodeSpacing: 180,       // افزایش فاصله افقی
+                levelSeparation: 150,   // افزایش فاصله عمودی
+                blockShifting: true, 
+                edgeMinimization: true,
+                parentCentralization: true,
+                shakeTowards: 'roots'
             } 
         },
         physics: false,
@@ -249,7 +235,7 @@ function initNetwork() {
         network.on("hoverNode", function (params) {
             const nodeId = params.node;
             const node = rawNodes.find(n => n.id === nodeId);
-            if(node && !node.isSpouse && !node.isMarriageNode) {
+            if(node && !node.isSpouse) {
                 tooltipEl.innerHTML = generateTooltipHTML(node);
                 tooltipEl.style.display = 'block';
                 const nodePosition = network.getPositions([nodeId])[nodeId];
@@ -275,21 +261,16 @@ function initNetwork() {
     });
 }
 
-// --- جایگزین تابع getVisibleIds در script.js ---
-
 function getVisibleIds(rootId, visibleSet = new Set()) {
     visibleSet.add(rootId);
     
-    // اصلاح: همسر همیشه نمایش داده شود (مستقل از باز/بسته بودن شاخه)
+    // همسر همیشه نمایش داده شود
     if (relationshipMap[rootId] && relationshipMap[rootId].spouses) {
         relationshipMap[rootId].spouses.forEach(spouseId => visibleSet.add(spouseId));
     }
 
     // شرط باز بودن فقط برای دیدن فرزندان اعمال شود
     if (expandedNodes.has(rootId)) {
-        if(relationshipMap[rootId].marriageNodes) {
-             relationshipMap[rootId].marriageNodes.forEach(mId => visibleSet.add(mId));
-        }
         relationshipMap[rootId].children.forEach(childId => {
             getVisibleIds(childId, visibleSet); 
         });
@@ -299,7 +280,7 @@ function getVisibleIds(rootId, visibleSet = new Set()) {
 
 function toggleBranch(nodeId) {
     const node = rawNodes.find(n => n.id === nodeId);
-    if (!node || node.isSpouse || node.isMarriageNode) return; 
+    if (!node || node.isSpouse) return; 
 
     const hasChildren = relationshipMap[nodeId].children.length > 0;
     if (!hasChildren) return;
@@ -325,7 +306,6 @@ function updateView() {
     } else {
         const branchRootId = parseInt(filterValue);
         allowedIds.add(rootId);
-        if(relationshipMap[rootId].marriageNodes) relationshipMap[rootId].marriageNodes.forEach(m => allowedIds.add(m));
         relationshipMap[rootId].spouses.forEach(s => allowedIds.add(s));
         
         allowedIds.add(branchRootId);
@@ -338,27 +318,15 @@ function updateView() {
             id: n.id,
             level: n.level,
             font: { background: 'rgba(255,255,255,0.9)', vadjust: 0, size: 20, bold: true },
+            shape: 'circularImage',
+            label: n.originalLabel
         };
 
-        // 1. استایل نود میانی (نقطه اتصال ریز)
-        if (n.isMarriageNode) {
-            nodeObj.shape = 'dot';
-            nodeObj.size = 2; // نقطه بسیار کوچک
-            nodeObj.color = { background: '#555', border: '#555' };
-            nodeObj.label = undefined;
-            return nodeObj;
-        }
-
-        // 2. استایل افراد
-        nodeObj.shape = 'circularImage';
-        nodeObj.label = n.originalLabel;
-        
         if (n.isSpouse) {
             nodeObj.label = n.label === "نامشخص" ? "" : n.label;
             nodeObj.color = { border: '#9ca3af', background: '#fff' };
             nodeObj.image = getAvatar(n.gender);
         } else {
-            // رنگ حاشیه: آبی برای مرد، صورتی برای زن
             if (n.gender === 'male') {
                 nodeObj.color = { border: '#2563eb', background: '#fff' };
             } else {
@@ -372,36 +340,30 @@ function updateView() {
             }
         }
         
-        // ضخامت حاشیه برای دیده شدن رنگ
         nodeObj.borderWidth = 4;
         
-        // هایلایت کاربر انتخاب شده در "هویت شما"
         if (currentUserId && n.id === currentUserId) {
-             nodeObj.color.background = '#fef08a'; // پس‌زمینه زرد کم‌رنگ
+             nodeObj.color.background = '#fef08a';
         }
 
         return nodeObj;
     });
 
-// در انتهای تابع updateView جایگزین بخش edges شود:
-const newEdges = rawEdges.filter(e => allowedIds.has(e.from) && allowedIds.has(e.to)).map(e => {
-    const isSpouse = e.type === 'spouse';
-    return {
-        from: e.from, 
-        to: e.to, 
-        // اگر همسر است خط‌چین، اگر فرزند است خط صاف
-        dashes: isSpouse ? [5, 5] : false, 
-        // رنگ متفاوت برای اتصال همسر
-        color: isSpouse ? '#ef4444' : '#b0b0b0', 
-        width: isSpouse ? 1.5 : 2,
-        // هموارسازی خطوط
-        smooth: {
-            type: isSpouse ? 'continuous' : 'cubicBezier',
-            forceDirection: 'vertical',
-            roundness: 0.6
-        }
-    };
-});
+    const newEdges = rawEdges.filter(e => allowedIds.has(e.from) && allowedIds.has(e.to)).map(e => {
+        const isSpouse = e.type === 'spouse';
+        return {
+            from: e.from, 
+            to: e.to, 
+            dashes: isSpouse ? [5, 5] : false, 
+            color: isSpouse ? '#ef4444' : '#b0b0b0', 
+            width: isSpouse ? 1.5 : 2,
+            smooth: {
+                type: isSpouse ? 'continuous' : 'cubicBezier',
+                forceDirection: 'vertical',
+                roundness: 0.6
+            }
+        };
+    });
 
     nodes.clear();
     edges.clear();
@@ -413,7 +375,7 @@ const newEdges = rawEdges.filter(e => allowedIds.has(e.from) && allowedIds.has(e
 
 function handleNodeClick(nodeId) {
     const node = rawNodes.find(n => n.id === nodeId);
-    if (!node || node.isMarriageNode) return;
+    if (!node) return;
 
     document.getElementById('profile-card').style.display = 'block';
     document.getElementById('p-name').innerText = node.originalLabel;
@@ -446,7 +408,7 @@ function calculatePath() {
     
     // ساخت گراف ساده برای مسیریابی
     const adj = {};
-    rawNodes.forEach(n => { if(!n.isMarriageNode) adj[n.id] = [] });
+    rawNodes.forEach(n => { adj[n.id] = [] });
     Object.keys(relationshipMap).forEach(key => {
         const id = parseInt(key);
         const d = relationshipMap[id];
@@ -488,7 +450,6 @@ function updateIdentity() {
 function getAllDescendantsIds(id) { 
     let res = []; 
     relationshipMap[id].spouses.forEach(s => res.push(s));
-    if(relationshipMap[id].marriageNodes) res.push(...relationshipMap[id].marriageNodes);
     relationshipMap[id].children.forEach(cid => { 
         res.push(cid); 
         res.push(...getAllDescendantsIds(cid)); 
