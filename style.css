@@ -14,14 +14,16 @@
 }
 
 body.dark-mode {
-    --bg-color: #0f172a;
+    --bg-color: #0b1121;
     --sidebar-bg: rgba(30, 41, 59, 0.95);
-    --text-color: #f1f5f9;
+    --text-color: #e2e8f0;
     --text-muted: #94a3b8;
-    --border-color: #334155;
-    --header-bg: #1e293b;
+    --border-color: #1e293b;
+    --header-bg: #0f172a;
     --accent-color: #60a5fa;
     --shadow-glass: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    background-image: radial-gradient(#334155 1px, transparent 1px);
+    background-size: 30px 30px; /* فاصله نقاط را بیشتر کنید تا شلوغ نشود */
 }
 
 body {

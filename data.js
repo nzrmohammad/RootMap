@@ -5,7 +5,10 @@ const genealogyData = {
     children: [
         // 1. سیاد
         {
-            name: "سیاد", gender: "male", spouse: "", children: []
+            name: "سیاد", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 2. سادات (همان اطلاعات قبلی)
@@ -83,52 +86,85 @@ const genealogyData = {
 
         // 3. مدد
         {
-            name: "مدد", gender: "male", spouse: "", children: []
+            name: "مدد", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 4. بهمن (فرزند مستقیم نظر)
         {
-            name: "بهمن", gender: "male", spouse: "", children: []
+            name: "بهمن", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 5. رحمن
         {
-            name: "رحمن", gender: "male", spouse: "", children: []
+            name: "رحمن", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 6. بابانظر
         {
-            name: "بابانظر", gender: "male", spouse: "", children: []
+            name: "بابانظر", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 7. سیاه
         {
-            name: "سیاه", gender: "male", spouse: "", children: []
+            name: "سیاه", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
 
         // 8. حسن
         {
-            name: "حسن قلی", gender: "male", spouse: "", children: []
+            name: "حسن قلی", gender: "male", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
         // 8. حسن
         {
-            name: "گوهر", gender: "female", spouse: "", children: []
+            name: "گوهر", gender: "female", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
         // 8. حسن
         {
-            name: "خاور", gender: "female", spouse: "", children: []
+            name: "خاور", gender: "female", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
         // 8. حسن
         {
-            name: "آبی جهان", gender: "female", spouse: "", children: []
+            name: "آبی جهان", gender: "female", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
         // 8. حسن
         {
-            name: "قریش", gender: "female", spouse: "", children: []
+            name: "قریش", gender: "female", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
         // 8. حسن
         {
-            name: "نسبر", gender: "female", spouse: "", children: []
+            name: "نسبر", gender: "female", spouse: "",
+            birth: 1280, death: 1365,
+            spouse: "نامشخص", 
+            children: []
         },
     ]
 };

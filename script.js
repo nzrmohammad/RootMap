@@ -242,8 +242,10 @@ function initNetwork() {
             color: { border: '#fff', background: '#fff', highlight: { border: '#2563eb', background: '#fff' } },
             font: { 
                 face: 'Vazirmatn', size: 20, color: '#000000', 
-                background: 'rgba(255, 255, 255, 0.9)', 
-                strokeWidth: 0, vadjust: 0,
+                // خط background کامل حذف شد
+                strokeWidth: 5,           // ✅ اضافه کردن حاشیه دور متن (به جای کادر)
+                strokeColor: '#ffffff',   // ✅ رنگ حاشیه سفید (برای تم روشن)
+                vadjust: 0,
                 bold: { size: 20, color: '#000000', mod: 'bold' }
             },
             shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 10, x: 5, y: 5 }
@@ -426,28 +428,31 @@ function updateView() {
 
     const newNodes = rawNodes.filter(n => allowedIds.has(n.id)).map(n => {
         // --- تنظیم رنگ هوشمند متن ---
-        let textColor, textStroke;
+        let textColor, textStroke, strokeWidth;
         
         if (isDarkMode) {
             // تم تاریک: متن سفید با حاشیه مشکی
-            textColor = n.death ? '#9ca3af' : '#ffffff'; 
-            textStroke = '#0f172a'; // رنگ پس‌زمینه تاریک
+            textColor = n.death ? '#94a3b8' : '#ffffff'; 
+            textStroke = 'rgba(0, 0, 0, 0.8)'; // به جای رنگ سالید، از سیاه شفاف استفاده کنید
+            strokeWidth = 3; // ضخامت را کمی کمتر کنید تا ظریف‌تر شود
         } else {
             // تم روشن: متن مشکی با حاشیه سفید
-            textColor = n.death ? '#4b5563' : '#000000'; 
-            textStroke = '#ffffff'; 
+            textColor = n.death ? '#4b5563' : '#0f172a'; 
+            textStroke = '#ffffff';
+            strokeWidth = 4;
         }
 
         let nodeObj = {
             id: n.id,
             level: n.level,
             font: { 
-                size: 20, 
-                color: textColor,        
-                strokeWidth: 4,          // ضخامت حاشیه دور متن (اصلاح شده)
-                strokeColor: textStroke, // رنگ حاشیه (اصلاح شده)
-                vadjust: 0, 
-                bold: true 
+            face: 'Vazirmatn', // مطمئن شوید فونت وزیر لود شده باشد
+            size: 22, // سایز را کمی بزرگتر کنید
+            color: textColor,        
+            strokeWidth: strokeWidth,          
+            strokeColor: textStroke, 
+            vadjust: -5, // کمی متن را بالاتر ببرید تا روی عکس نیفتد
+            bold: { size: 22, mod: 'bold' } 
             },
             shape: 'circularImage',
             label: n.originalLabel
