@@ -277,3 +277,94 @@ select:focus, input:focus { outline: none; border-color: var(--accent-color); }
     text-align: center;
     color: var(--text-muted);
 }
+
+
+/* --- استایل اصلاح شده تایم‌لاین (رفع مشکل عکس غول‌پیکر) --- */
+
+/* اجازه میدهیم عکس از کادر آیتم بیرون بزند (برای زوم شدن) */
+.vis-item {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important; /* حیاتی: جلوگیری از بریده شدن عکس */
+    z-index: 10;
+}
+
+.vis-item-content {
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+/* کانتینر اصلی آیتم */
+.t-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end; /* تراز از پایین */
+    position: relative;
+    width: 40px; /* عرض ثابت برای کانتینر */
+    height: 40px;
+    margin-bottom: 5px;
+}
+
+/* استایل عکس (نقطه شروع: خیلی کوچک) */
+.t-avatar {
+    width: 30px !important;  /* سایز اجباری */
+    height: 30px !important; /* سایز اجباری */
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    background: #fff;
+    
+    /* انیمیشن نرم */
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-origin: bottom center;
+    z-index: 20;
+    position: relative;
+}
+
+/* خط اتصال به پایین */
+.t-stem {
+    width: 2px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    margin-top: -2px;
+    z-index: 10;
+}
+
+/* --- جادوی هاور (بزرگ شدن عکس) --- */
+.t-item:hover {
+    z-index: 1000 !important; /* آوردن به بالاترین لایه */
+}
+
+.t-item:hover .t-avatar {
+    width: 100px !important;  /* سایز بزرگ هنگام هاور */
+    height: 100px !important;
+    border-radius: 10px;      /* تبدیل به مربع گوشه‌گرد */
+    border-width: 4px;
+    transform: translateY(-60px); /* حرکت به بالا تا روی خط نیفتد */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+/* اسم فرد (فقط در هاور دیده شود) */
+.t-name {
+    opacity: 0;
+    position: absolute;
+    bottom: 5px; /* تنظیم مکان */
+    font-size: 0.8em;
+    font-weight: bold;
+    color: white;
+    background: rgba(0,0,0,0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 1001;
+}
+
+.t-item:hover .t-name {
+    opacity: 1;
+    bottom: -15px;
+}

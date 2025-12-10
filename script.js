@@ -517,24 +517,144 @@ function updateView() {
     if(network) network.fit();
 }
 
+// --- تابع هوشمند محاسبه نسبت با ریشه ---
+function getRelationshipText(node) {
+    // ۱. پیدا کردن ریشه (کسی که level 0 است)
+    const rootNode = rawNodes.find(n => n.level === 0);
+    const rootName = rootNode ? rootNode.originalLabel : "بزرگ خاندان";
+
+    // ۲. اگر خود ریشه انتخاب شده
+    if (node.level === 0) return "بزرگ خاندان (ریشه)";
+
+    // ۳. اگر همسر انتخاب شده
+    if (node.isSpouse) {
+        // پیدا کردن نام همسرش
+        const spouseId = relationshipMap[node.id].spouses[0];
+        const spouse = spouseId ? rawNodes.find(n => n.id === spouseId) : null;
+        if (spouse) {
+            // بازگشتی: نسبت همسرش را حساب می‌کنیم و "همسرِ" را به اولش اضافه می‌کنیم
+            // مثلاً: همسرِ نوه نظر
+            const spouseRel = getRelationshipText(spouse);
+            return `همسرِ ${spouseRel.replace(` ${rootName}`, '')}ِ ${rootName}`; 
+        }
+        return "عروس/داماد خاندان";
+    }
+
+    // ۴. محاسبه بر اساس سطح (Level)
+    let term = "";
+    switch (node.level) {
+        case 1: term = "فرزند"; break;
+        case 2: term = "نوه"; break;
+        case 3: term = "نتیجه"; break;
+        case 4: term = "نبیره"; break;
+        case 5: term = "ندیده"; break;
+        default: term = `نسل ${node.level}ام`; break;
+    }
+
+    // ۵. منطق پیشرفته برای نوه (تشخیص پسری/دختری)
+    if (node.level === 2) {
+        const parentId = relationshipMap[node.id].parents[0];
+        if (parentId) {
+            const parent = rawNodes.find(n => n.id === parentId);
+            if (parent) {
+                const side = parent.gender === 'male' ? "پسری" : "دختری";
+                return `${term} ${side} ${rootName}`; // خروجی: نوه پسری نظر
+            }
+        }
+    }
+
+    // خروجی استاندارد: نتیجه نظر
+    return `${term} ${rootName}`;
+}
+
+// جایگزین تابع handleNodeClick در فایل script.js
 function handleNodeClick(nodeId) {
     const node = rawNodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    document.getElementById('profile-card').style.display = 'block';
-    document.getElementById('p-name').innerText = node.originalLabel;
-    document.getElementById('p-birth').innerText = "-";
+    const profileCard = document.getElementById('profile-card');
+    profileCard.style.display = 'block';
     
+    // پر کردن اطلاعات (نام، تولد، همسر، عکس)
+    document.getElementById('p-name').innerText = node.originalLabel;
+    document.getElementById('p-birth').innerText = node.birth ? node.birth : "-";
     const spouseId = relationshipMap[node.id].spouses[0];
     document.getElementById('p-spouse').innerText = spouseId ? rawNodes.find(n => n.id === spouseId).originalLabel : 'مجرد';
     
     const img = document.getElementById('p-img');
     const borderColor = node.gender === 'male' ? '#2563eb' : '#e11d48';
-    img.innerHTML = `<img src="${getAvatar(node.gender)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%">`;
+    const imgSrc = node.image ? node.image : getAvatar(node.gender);
+    img.innerHTML = `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover; border-radius:50%">`;
     img.style.border = `4px solid ${borderColor}`;
+
+    // --- محاسبه نسبت فامیلی ---
     const badge = document.getElementById('p-rel-badge');
-    badge.innerText = "جزئیات"; badge.style.background = node.color;
+    let relationshipText = "";
     
+    if (currentUserId) {
+        relationshipText = getKinship(currentUserId, nodeId);
+        if (nodeId === currentUserId) relationshipText = "خودِ شما";
+    } else {
+        relationshipText = getRelationshipText(node);
+    }
+    
+    badge.innerText = relationshipText;
+    badge.style.background = node.isSpouse ? '#64748b' : (node.gender === 'male' ? '#2563eb' : '#e11d48');
+    if (nodeId === currentUserId) badge.style.background = '#f59e0b'; // رنگ طلایی برای خود کاربر
+
+    // --- 🔥 ویژگی جدید: دکمه "این منم" ---
+    // بررسی می‌کنیم آیا دکمه قبلاً ساخته شده یا نه
+    let setMeBtn = document.getElementById('btn-set-identity');
+    
+    // اگر دکمه وجود نداشت، آن را می‌سازیم و به کارت اضافه می‌کنیم
+    if (!setMeBtn) {
+        setMeBtn = document.createElement('button');
+        setMeBtn.id = 'btn-set-identity';
+        setMeBtn.className = 'btn-action'; // از استایل دکمه‌های موجود استفاده می‌کنیم
+        setMeBtn.style.marginTop = '10px';
+        setMeBtn.style.borderStyle = 'solid'; // کمی متمایز باشد
+        
+        // اضافه کردن دکمه بعد از دکمه "افزودن فرزند" یا به انتهای کارت
+        const grid = profileCard.querySelector('.data-grid');
+        grid.parentNode.insertBefore(setMeBtn, grid.nextSibling); 
+    }
+
+    // تنظیم ظاهر و عملکرد دکمه
+    if (currentUserId === nodeId) {
+        // اگر این پروفایل الان انتخاب شده است
+        setMeBtn.innerHTML = '<i class="fas fa-check-circle"></i> شما هستید';
+        setMeBtn.style.background = '#10b981'; // سبز
+        setMeBtn.style.color = 'white';
+        setMeBtn.style.borderColor = '#10b981';
+        setMeBtn.disabled = true; // غیرفعال کردن کلیک
+    } else {
+        // اگر پروفایل کس دیگری است
+        setMeBtn.innerHTML = '<i class="fas fa-user-check"></i> این من هستم';
+        setMeBtn.style.background = 'transparent';
+        setMeBtn.style.color = 'var(--accent-color)';
+        setMeBtn.style.borderColor = 'var(--accent-color)';
+        setMeBtn.disabled = false;
+        
+        setMeBtn.onclick = function() {
+            // تنظیم هویت
+            currentUserId = nodeId;
+            
+            // آپدیت کردن دراپ‌دان (برای هماهنگی)
+            const dropdown = document.getElementById('user-identity');
+            if(dropdown) dropdown.value = nodeId;
+
+            // پیام تایید موقت (اختیاری)
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال تنظیم...';
+            
+            setTimeout(() => {
+                // رفرش کردن گرافیک و پنل
+                updateIdentity(); // این تابع قبلاً نوشته شده و گراف را رفرش می‌کند
+                handleNodeClick(nodeId); // پنل را دوباره لود می‌کنیم تا دکمه سبز شود
+            }, 500);
+        };
+    }
+
+    // باز کردن سایدبار
     const sb = document.getElementById('sidebar');
     if(sb.classList.contains('closed')) sb.classList.remove('closed');
 }
@@ -588,6 +708,13 @@ function calculatePath() {
 
 function updateIdentity() { 
     currentUserId = parseInt(document.getElementById('user-identity').value);
+    
+    // اضافه شده: اگر همین الان کسی انتخاب شده، دوباره اطلاعاتش را آپدیت کن تا نسبت جدید نشان داده شود
+    const selectedNodes = network.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+        handleNodeClick(selectedNodes[0]);
+    }
+
     updateView();
 }
 
@@ -767,75 +894,75 @@ document.addEventListener('click', function(e) {
 
 let timeline = null;
 
+// --- نسخه جدید و زیبای تایم‌لاین ---
 function initTimeline() {
     const container = document.getElementById('mytimeline');
+    // پاک کردن محتوای قبلی اگر وجود دارد
+    container.innerHTML = '';
+    
     const items = new vis.DataSet();
     
-    // تابع بازگشتی برای استخراج داده‌های تاریخ‌دار
-    function extractDates(node) {
-        // اگر سال تولد دارد، اضافه کن
-        if (node.birth) {
-            items.add({
-                id: node.id, // شناسه باید با شناسه گراف یکی باشد
-                content: node.name || node.label,
-                start: String(node.birth), // سال تولد
-                end: node.death ? String(node.death) : new Date().getFullYear().toString(), // اگر فوت کرده سال وفات، وگرنه سال جاری
-                type: 'range', // به صورت بازه زمانی
-                className: node.gender === 'male' ? 'timeline-male' : 'timeline-female' // کلاس برای رنگ‌بندی
-            });
-        }
-        
-        // بررسی فرزندان
-        if (node.children) {
-            node.children.forEach(child => {
-                // چون ساختار children در دیتا متفاوت است (رشته یا آبجکت)، باید استاندارد شود
-                // اما چون ما در buildGraph به rawNodes شناسه دادیم، بهتر است از rawNodes استفاده کنیم
-            });
-        }
-    }
-
-    // روش بهتر: استفاده از rawNodes که قبلاً ساخته‌ایم و همه داده‌ها را دارد
+    // مرتب‌سازی نودها برای اینکه بدانیم کدام سطح هستند (اختیاری)
     rawNodes.forEach(node => {
-        // پیدا کردن دیتای اصلی از روی label (چون rawNodes همه فیلدها را ندارد، باید مپ کنیم)
-        // اما ساده‌تر این است که دستی در rawNodes تاریخ را هم ذخیره کنیم.
-        // بیایید تابع buildGraph را کمی اصلاح کنیم که birth/death را هم نگه دارد.
-        // (راه حل موقت: فرض میکنیم در rawNodes ذخیره شده است - به مرحله ۳ دقت کنید)
-        
         if (node.birth) {
+            const borderColor = node.gender === 'male' ? '#2563eb' : '#e11d48';
+            const imgSrc = node.image ? node.image : getAvatar(node.gender);
+
+            // نکته مهم: استایل inline هم میدهیم تا اگر CSS لود نشد، عکس منفجر نشود!
+            const contentHTML = `
+                <div class="t-item">
+                    <img src="${imgSrc}" class="t-avatar" style="width:30px; height:30px; border-color: ${borderColor}">
+                    <span class="t-name">${node.originalLabel}</span>
+                    <div class="t-stem" style="background:${borderColor}"></div> 
+                </div>
+            `;
+
             items.add({
                 id: node.id,
-                content: node.originalLabel,
-                start: String(node.birth), // تبدیل سال شمسی به رشته برای Vis
-                end: node.death ? String(node.death) : (new Date().toLocaleDateString('fa-IR-u-nu-latn').split('/')[0]), // سال جاری شمسی تقریبی
-                type: node.death ? 'range' : 'point', // اگر زنده است نقطه باشد یا بازه باز
-                style: `background-color: ${node.gender === 'male' ? '#bfdbfe' : '#fecdd3'}; border-color: ${node.gender === 'male' ? '#2563eb' : '#e11d48'}; font-size: 12px; border-radius: 5px;`
+                start: String(node.birth),
+                content: contentHTML,
+                type: 'point', 
+                // حذف استایل‌های اضافه که ممکن است خرابکاری کنند
+                className: 'custom-vis-item' 
             });
         }
     });
 
+    // تنظیمات محور زمان
     const options = {
-        height: '100%',
-        minHeight: '150px',
-        start: '1300', // شروع پیش‌فرض نمودار
-        end: '1410',   // پایان پیش‌فرض
-        rtl: true,     // جهت راست به چپ
-        orientation: 'top'
+        height: '220px',      // ارتفاع مناسب برای عکس‌ها
+        min: '1200',          // شروع محور (طبق درخواست شما)
+        max: '1410',          // پایان محور (آینده نزدیک)
+        start: '1280',        // جایی که دوربین در ابتدا نشان می‌دهد
+        end: '1400',
+        rtl: true,            // راست به چپ
+        orientation: 'bottom',// محور اعداد پایین باشد
+        zoomMin: 1000 * 60 * 60 * 24 * 31 * 12 * 5, // حداقل زوم (۵ سال)
+        zoomMax: 1000 * 60 * 60 * 24 * 31 * 12 * 500, // حداکثر زوم (۵۰۰ سال)
+        showCurrentTime: true, // خط زمان حال
+        moveable: true,
+        zoomable: true,
+        verticalScroll: true,  // اگر عکس‌ها زیاد شدند روی هم نیفتند، اسکرول بخورد
+        stack: true,           // اجازه بدهیم عکس‌ها روی هم چیده شوند (پله‌ای) تا دیده شوند
+        stackSubgroups: true
     };
 
     if (items.length > 0) {
         timeline = new vis.Timeline(container, items, options);
         
-        // وقتی روی تایم‌لاین کلیک شد، در گراف هم انتخاب شود
+        // کلیک روی عکس در تایم‌لاین -> زوم روی گراف
         timeline.on('select', function (properties) {
             if(properties.items.length > 0) {
                 const selectedId = properties.items[0];
+                
+                // باز کردن گراف
                 network.selectNodes([selectedId]);
                 network.focus(selectedId, { scale: 1.2, animation: true });
-                handleNodeClick(selectedId); // نمایش اطلاعات در سایدبار
+                handleNodeClick(selectedId);
             }
         });
     } else {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">تاریخ تولدی ثبت نشده است.</div>';
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">تاریخ تولدی برای نمایش در تایم‌لاین ثبت نشده است.</div>';
     }
 }
 
@@ -885,6 +1012,89 @@ function updateDashboard() {
     }
     // اگر تکراری وجود داشت نشان بده، وگرنه خط تیره
     document.getElementById('stat-top-name').innerText = maxCount > 1 ? `${topName} (${maxCount})` : "تکراری نداریم";
+}
+
+// --- تابع پیشرفته محاسبه نسبت بین دو نفر (من و سوژه) ---
+function getKinship(meId, targetId) {
+    if (meId === targetId) return "خودِ شما";
+    
+    // ۱. بررسی همسری مستقیم
+    if (relationshipMap[meId].spouses.includes(targetId)) return "همسر شما";
+
+    // ۲. یافتن مسیر خونی (Parents traversal)
+    // تابع کمکی برای پیدا کردن اجداد و فاصله آن‌ها
+    function getAncestors(id) {
+        let ancestors = { [id]: 0 }; // id: distance
+        let queue = [{ id: id, dist: 0 }];
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            let parents = relationshipMap[curr.id].parents;
+            parents.forEach(pid => {
+                if (ancestors[pid] === undefined) {
+                    ancestors[pid] = curr.dist + 1;
+                    queue.push({ id: pid, dist: curr.dist + 1 });
+                }
+            });
+        }
+        return ancestors;
+    }
+
+    const myAncestors = getAncestors(meId);
+    const targetAncestors = getAncestors(targetId);
+
+    // ۳. پیدا کردن نزدیک‌ترین جد مشترک (LCA)
+    let lcaId = null;
+    let minSumDist = Infinity;
+    
+    for (let ancId in myAncestors) {
+        if (targetAncestors[ancId] !== undefined) {
+            let sumDist = myAncestors[ancId] + targetAncestors[ancId];
+            if (sumDist < minSumDist) {
+                minSumDist = sumDist;
+                lcaId = ancId;
+            }
+        }
+    }
+
+    // اگر جد مشترک پیدا نشد (شاید فقط رابطه سببی/همسری دور باشد یا کلا وصل نباشند)
+    if (!lcaId) {
+        // اینجا می‌شود منطق پیچیده‌تر برای اقوام همسر نوشت، اما فعلاً:
+        return "از بستگان (رابطه سببی)";
+    }
+
+    const up = myAncestors[lcaId];      // فاصله من تا جد
+    const down = targetAncestors[lcaId]; // فاصله جد تا سوژه
+    const targetNode = rawNodes.find(n => n.id === targetId);
+    const isMale = targetNode.gender === 'male';
+
+    // ۴. ترجمه فاصله‌ها به نسبت فامیلی
+    // (up=0 یعنی خودم یا پایین‌تر، down=0 یعنی اجدادم)
+    
+    // --- اجداد و فرزندان مستقیم ---
+    if (up === 0 && down === 1) return isMale ? "فرزند (پسر)" : "فرزند (دختر)";
+    if (up === 0 && down === 2) return "نوه";
+    if (up === 0 && down >= 3) return "نتیجه/نبیره";
+    
+    if (down === 0 && up === 1) return isMale ? "پدر" : "مادر";
+    if (down === 0 && up === 2) return isMale ? "پدربزرگ" : "مادربزرگ";
+    if (down === 0 && up >= 3) return "جد پدری/مادری";
+
+    // --- خواهر و برادر ---
+    if (up === 1 && down === 1) return isMale ? "برادر" : "خواهر";
+
+    // --- عمو، عمه، دایی، خاله ---
+    if (up === 1 && down === 2) return isMale ? "برادرزاده" : "خواهرزاده"; // برادر/خواهرِ من، بچه‌اش میشه...
+    if (up === 2 && down === 1) {
+        // باید بفهمیم از طرف پدر است یا مادر
+        // راه ساده: بررسی کنیم جد مشترک پدرِ پدر من است یا پدرِ مادر من
+        // اما برای سادگی فعلاً کلی می‌نویسیم (یا می‌توانیم دقیق‌تر کنیم)
+        return isMale ? "عمو / دایی" : "عمه / خاله";
+    }
+
+    // --- عموزاده، خاله زاده و... ---
+    if (up === 2 && down === 2) return isMale ? "پسرعمو/دایی/عمه/خاله" : "دخترعمو/دایی/عمه/خاله";
+
+    return `از بستگان (فاصله ${up} بالا، ${down} پایین)`;
 }
 
 // دکمه نمایش/مخفی کردن تایم‌لاین
