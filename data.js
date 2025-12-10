@@ -1,9 +1,11 @@
 const genealogyData = {
     name: "نظر", gender: "male", level: 0,
+    birth: 1280, death: 1365,
     spouse: "نامشخص",
     children: [
         {
             name: "سادات", gender: "male", spouse: "خمار",
+            birth: 1310, death: 1390,
             children: [
                 {
                     name: "گوهر", gender: "female", spouse: "ناصر",

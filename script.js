@@ -36,6 +36,8 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         originalLabel: data.name,
         level: level,
         gender: gender,
+        birth: data.birth, 
+        death: data.death,
         color: color,
         size: level === 0 ? 70 : (level === 1 ? 50 : 35),
         branch: branchId || nodeId
@@ -278,6 +280,7 @@ function initNetwork() {
         });
         
         updateView();
+        updateDashboard();
     });
 }
 
@@ -546,5 +549,140 @@ function exportHighQuality() {
     }, 500);
 }
 function searchNode() { const q = document.getElementById('search').value; const t = rawNodes.find(n => n.originalLabel.includes(q)); if(t && nodes.get(t.id)) { network.selectNodes([t.id]); network.focus(t.id, {scale: 1.2, animation: true}); } }
+
+// --- 5. تنظیمات و توابع تایم‌لاین ---
+
+let timeline = null;
+
+function initTimeline() {
+    const container = document.getElementById('mytimeline');
+    const items = new vis.DataSet();
+    
+    // تابع بازگشتی برای استخراج داده‌های تاریخ‌دار
+    function extractDates(node) {
+        // اگر سال تولد دارد، اضافه کن
+        if (node.birth) {
+            items.add({
+                id: node.id, // شناسه باید با شناسه گراف یکی باشد
+                content: node.name || node.label,
+                start: String(node.birth), // سال تولد
+                end: node.death ? String(node.death) : new Date().getFullYear().toString(), // اگر فوت کرده سال وفات، وگرنه سال جاری
+                type: 'range', // به صورت بازه زمانی
+                className: node.gender === 'male' ? 'timeline-male' : 'timeline-female' // کلاس برای رنگ‌بندی
+            });
+        }
+        
+        // بررسی فرزندان
+        if (node.children) {
+            node.children.forEach(child => {
+                // چون ساختار children در دیتا متفاوت است (رشته یا آبجکت)، باید استاندارد شود
+                // اما چون ما در buildGraph به rawNodes شناسه دادیم، بهتر است از rawNodes استفاده کنیم
+            });
+        }
+    }
+
+    // روش بهتر: استفاده از rawNodes که قبلاً ساخته‌ایم و همه داده‌ها را دارد
+    rawNodes.forEach(node => {
+        // پیدا کردن دیتای اصلی از روی label (چون rawNodes همه فیلدها را ندارد، باید مپ کنیم)
+        // اما ساده‌تر این است که دستی در rawNodes تاریخ را هم ذخیره کنیم.
+        // بیایید تابع buildGraph را کمی اصلاح کنیم که birth/death را هم نگه دارد.
+        // (راه حل موقت: فرض میکنیم در rawNodes ذخیره شده است - به مرحله ۳ دقت کنید)
+        
+        if (node.birth) {
+            items.add({
+                id: node.id,
+                content: node.originalLabel,
+                start: String(node.birth), // تبدیل سال شمسی به رشته برای Vis
+                end: node.death ? String(node.death) : (new Date().toLocaleDateString('fa-IR-u-nu-latn').split('/')[0]), // سال جاری شمسی تقریبی
+                type: node.death ? 'range' : 'point', // اگر زنده است نقطه باشد یا بازه باز
+                style: `background-color: ${node.gender === 'male' ? '#bfdbfe' : '#fecdd3'}; border-color: ${node.gender === 'male' ? '#2563eb' : '#e11d48'}; font-size: 12px; border-radius: 5px;`
+            });
+        }
+    });
+
+    const options = {
+        height: '100%',
+        minHeight: '150px',
+        start: '1300', // شروع پیش‌فرض نمودار
+        end: '1410',   // پایان پیش‌فرض
+        rtl: true,     // جهت راست به چپ
+        orientation: 'top'
+    };
+
+    if (items.length > 0) {
+        timeline = new vis.Timeline(container, items, options);
+        
+        // وقتی روی تایم‌لاین کلیک شد، در گراف هم انتخاب شود
+        timeline.on('select', function (properties) {
+            if(properties.items.length > 0) {
+                const selectedId = properties.items[0];
+                network.selectNodes([selectedId]);
+                network.focus(selectedId, { scale: 1.2, animation: true });
+                handleNodeClick(selectedId); // نمایش اطلاعات در سایدبار
+            }
+        });
+    } else {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">تاریخ تولدی ثبت نشده است.</div>';
+    }
+}
+
+// --- تابع محاسبه و نمایش آمار داشبورد ---
+function updateDashboard() {
+    // 1. آمار کلی (کارت اول)
+    const totalPop = rawNodes.length;
+    // پیدا کردن بیشترین سطح (Level) برای تعداد نسل
+    const maxLevel = rawNodes.length > 0 ? Math.max(...rawNodes.map(n => n.level)) + 1 : 0;
+    // تعداد ازدواج‌ها (تعداد یال‌های از نوع spouse)
+    const totalMarriages = rawEdges.filter(e => e.type === 'spouse').length;
+
+    document.getElementById('stat-total').innerText = totalPop;
+    document.getElementById('stat-gens').innerText = maxLevel;
+    document.getElementById('stat-marriages').innerText = totalMarriages;
+
+    // 2. آمار تحلیلی (کارت دوم - جدید)
+    
+    // الف) میانگین فرزند: (کل روابط خونی / تعداد افرادی که والد هستند)
+    const bloodEdges = rawEdges.filter(e => e.type === 'blood');
+    const parentCount = new Set(bloodEdges.map(e => e.from)).size;
+    const avgChild = parentCount > 0 ? (bloodEdges.length / parentCount).toFixed(1) : 0;
+    document.getElementById('stat-avg-child').innerText = avgChild;
+
+    // ب) نسبت جنسیتی
+    const males = rawNodes.filter(n => n.gender === 'male').length;
+    const females = rawNodes.filter(n => n.gender === 'female').length;
+    const mPercent = totalPop > 0 ? Math.round((males / totalPop) * 100) : 0;
+    const fPercent = totalPop > 0 ? Math.round((females / totalPop) * 100) : 0;
+    document.getElementById('stat-gender-ratio').innerText = `${mPercent}% - ${fPercent}%`;
+
+    // ج) نام پرتکرار
+    const nameMap = {};
+    rawNodes.forEach(n => {
+        // حذف پیشوند/پسوندها برای دقت بیشتر (اختیاری)
+        const cleanName = n.originalLabel.trim();
+        nameMap[cleanName] = (nameMap[cleanName] || 0) + 1;
+    });
+    
+    let topName = "-";
+    let maxCount = 0;
+    for (const [name, count] of Object.entries(nameMap)) {
+        if (count > maxCount) {
+            maxCount = count;
+            topName = name;
+        }
+    }
+    // اگر تکراری وجود داشت نشان بده، وگرنه خط تیره
+    document.getElementById('stat-top-name').innerText = maxCount > 1 ? `${topName} (${maxCount})` : "تکراری نداریم";
+}
+
+// دکمه نمایش/مخفی کردن تایم‌لاین
+function toggleTimeline() {
+    const container = document.getElementById('timeline-container');
+    container.classList.toggle('timeline-hidden');
+    
+    // اگر بار اول است و باز شده، تایم‌لاین را بساز
+    if (!container.classList.contains('timeline-hidden') && !timeline) {
+        initTimeline();
+    }
+}
 
 initNetwork();
