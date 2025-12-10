@@ -77,7 +77,6 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
                 from: parentId, 
                 to: spouseId, 
                 type: 'ghost', // نوع جدید
-                hidden: true,   // مخفی کردن خط
                 physics: false 
             };
         }
@@ -372,12 +371,17 @@ function updateView() {
 
     const newEdges = rawEdges.filter(e => allowedIds.has(e.from) && allowedIds.has(e.to)).map(e => {
         const isSpouse = e.type === 'spouse';
+        const isGhost = e.type === 'ghost'; 
+
         return {
             from: e.from, 
             to: e.to, 
+            // اگر گوست است، رنگش شفاف شود (نامرئی) ولی خط وجود داشته باشد
+            color: isGhost ? 'rgba(0,0,0,0)' : (isSpouse ? '#ef4444' : '#b0b0b0'), 
+            // نکته مهم: اینجا دیگر hidden را true نمی‌کنیم
             dashes: isSpouse ? [5, 5] : false, 
-            color: isSpouse ? '#ef4444' : '#b0b0b0', 
             width: isSpouse ? 1.5 : 2,
+            hoverWidth: 0, // وقتی موس رفت روش هم دیده نشود
             smooth: {
                 type: isSpouse ? 'continuous' : 'cubicBezier',
                 forceDirection: 'vertical',
