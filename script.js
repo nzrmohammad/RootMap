@@ -479,7 +479,35 @@ function getAllDescendantsIds(id) {
 }
 
 function toggleLeftPanel() { document.getElementById('left-panel').classList.toggle('closed'); setTimeout(() => network && network.fit(), 400); }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('closed'); setTimeout(() => network && network.fit(), 400); }
+// جایگزین تابع toggleSidebar قبلی در فایل script.js
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    
+    // اگر کلاس بسته دارد -> بازش کن
+    if (sb.classList.contains('closed')) {
+        sb.classList.remove('closed');
+        sb.classList.add('open');
+    } 
+    // اگر کلاس باز دارد -> ببندش
+    else if (sb.classList.contains('open')) {
+        sb.classList.remove('open');
+        sb.classList.add('closed');
+    } 
+    // اگر هیچ کلاسی ندارد (حالت اولیه):
+    else {
+        // اگر در موبایل هستیم: پیش‌فرض بسته است، پس بازش کن
+        if (window.innerWidth <= 768) {
+            sb.classList.add('open');
+        } 
+        // اگر در دسکتاپ هستیم: پیش‌فرض باز است، پس ببندش
+        else {
+            sb.classList.add('closed');
+        }
+    }
+    
+    // تنظیم مجدد گراف
+    setTimeout(() => network && network.fit(), 400);
+}
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); updateView(); }
 function changeLayout() { currentLayout = document.getElementById('layout-direction').value; network.setOptions({ layout: { hierarchical: { direction: currentLayout } } }); network.fit();}
 // این تابع را جایگزین function exportGraph() در انتهای فایل script.js کنید
