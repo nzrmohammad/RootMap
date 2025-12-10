@@ -41,9 +41,13 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         branch: branchId || nodeId
     });
 
-    // اتصال به والد (رابطه خونی)
+    // --- منطق جدید برای تعیین موقعیت چپ/راست (مرد راست، زن چپ) ---
+    let bloodEdge = null;
+    let ghostEdge = null;
+
+    // تعریف رابطه خونی (والد به فرزند) - فعلاً فقط می‌سازیم، اضافه نمی‌کنیم
     if (parentId !== null) {
-        rawEdges.push({ from: parentId, to: nodeId, type: 'blood' });
+        bloodEdge = { from: parentId, to: nodeId, type: 'blood' };
     }
 
     // 2. ساخت نود همسر
@@ -67,18 +71,33 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
         // اتصال همسر به فرد اصلی (خط‌چین قرمز)
         rawEdges.push({ from: nodeId, to: spouseId, type: 'spouse' });
 
-        // >>> ترفند اصلی اینجاست <<<
-        // یک اتصال نامرئی از والدِ اصلی به همسر فرزند ایجاد می‌کنیم
-        // این کار باعث می‌شود همسر دقیقاً کنار شوهر/زن قرار بگیرد
+        // تعریف رابطه نامرئی (والد به همسر فرزند)
         if (parentId !== null) {
-            rawEdges.push({ 
+            ghostEdge = { 
                 from: parentId, 
                 to: spouseId, 
                 type: 'ghost', // نوع جدید
                 hidden: true,   // مخفی کردن خط
                 physics: false 
-            });
+            };
         }
+    }
+
+    // --- اعمال هوشمندانه ترتیب اتصال‌ها ---
+    // در Vis.js معمولاً گره‌هایی که زودتر متصل می‌شوند به سمت چپ متمایل می‌شوند.
+    
+    if (gender === 'male') {
+        // اگر فرد اصلی "مرد" است:
+        // ۱. اول اتصال همسرش (زن) را ثبت می‌کنیم (تا برود سمت چپ)
+        if (ghostEdge) rawEdges.push(ghostEdge);
+        // ۲. بعد اتصال خود مرد را ثبت می‌کنیم (تا برود سمت راست)
+        if (bloodEdge) rawEdges.push(bloodEdge);
+    } else {
+        // اگر فرد اصلی "زن" است:
+        // ۱. اول اتصال خود زن را ثبت می‌کنیم (تا برود سمت چپ)
+        if (bloodEdge) rawEdges.push(bloodEdge);
+        // ۲. بعد اتصال همسرش (مرد) را ثبت می‌کنیم (تا برود سمت راست)
+        if (ghostEdge) rawEdges.push(ghostEdge);
     }
 
     // 3. پردازش فرزندان
@@ -87,7 +106,8 @@ function buildGraph(data, parentId = null, level = 0, color = '#2c3e50', branchI
             return typeof child === 'string' ? { name: child, gender: guessGender(child) } : { ...child, gender: child.gender || guessGender(child.name) };
         });
 
-        processedChildren.forEach((childObj, index) => {
+        // نکته مهم: لیست معکوس می‌شود تا فرزند اول در سمت راست قرار گیرد (برای حالت RTL)
+        processedChildren.reverse().forEach((childObj, index) => {
             let childColor = color;
             let currentBranch = branchId;
             
@@ -198,7 +218,8 @@ function initNetwork() {
             font: { 
                 face: 'Vazirmatn', size: 20, color: '#000000', 
                 background: 'rgba(255, 255, 255, 0.9)', 
-                strokeWidth: 0, vadjust: 0, bold: true 
+                strokeWidth: 0, vadjust: 0,
+                bold: { size: 20, color: '#000000', mod: 'bold' } // <--- اصلاح شده
             },
             shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 10, x: 5, y: 5 }
         },
@@ -209,7 +230,7 @@ function initNetwork() {
         layout: { 
             hierarchical: { 
                 direction: "UD", 
-                sortMethod: 'hubsize', // تغییر برای نظم بهتر
+                sortMethod: 'directed', // تغییر برای نظم بهتر
                 nodeSpacing: 180,       // افزایش فاصله افقی
                 levelSeparation: 150,   // افزایش فاصله عمودی
                 blockShifting: true, 
@@ -461,7 +482,37 @@ function toggleLeftPanel() { document.getElementById('left-panel').classList.tog
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('closed'); setTimeout(() => network && network.fit(), 400); }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); updateView(); }
 function changeLayout() { currentLayout = document.getElementById('layout-direction').value; network.setOptions({ layout: { hierarchical: { direction: currentLayout } } }); network.fit();}
-function exportGraph() { const canvas = document.querySelector('#mynetwork canvas'); const link = document.createElement('a'); link.download = 'Tree.png'; link.href = canvas.toDataURL(); link.click(); }
+// این تابع را جایگزین function exportGraph() در انتهای فایل script.js کنید
+function exportHighQuality() {
+    const container = document.getElementById('mynetwork');
+    const canvas = container.querySelector('canvas');
+    
+    // ذخیره وضعیت فعلی برای بازگرداندن بعد از عکس گرفتن
+    const currentScale = network.getScale();
+    const currentPosition = network.getViewPosition();
+    
+    // بزرگنمایی برای کیفیت بهتر (مثلاً ۲ برابر)
+    network.fit({
+        animation: false
+    });
+    
+    // کمی صبر برای رندر شدن (ایمن‌سازی)
+    setTimeout(() => {
+        const imageUrl = canvas.toDataURL("image/png", 1.0); // کیفیت ماکزیمم
+        
+        const link = document.createElement('a');
+        link.download = 'FamilyTree-HD.png';
+        link.href = imageUrl;
+        link.click();
+        
+        // بازگشت به حالت زوم قبلی کاربر
+        network.moveTo({
+            position: currentPosition,
+            scale: currentScale,
+            animation: false
+        });
+    }, 500);
+}
 function searchNode() { const q = document.getElementById('search').value; const t = rawNodes.find(n => n.originalLabel.includes(q)); if(t && nodes.get(t.id)) { network.selectNodes([t.id]); network.focus(t.id, {scale: 1.2, animation: true}); } }
 
 initNetwork();
