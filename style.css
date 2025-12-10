@@ -252,3 +252,26 @@ select:focus, input:focus { outline: none; border-color: var(--accent-color); }
 .tooltip-header { padding: 10px; color: white; display: flex; align-items: center; gap: 10px; }
 .tooltip-img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; }
 .tooltip-body { padding: 10px; font-size: 0.85em; color: var(--text-color); }
+
+/* اصلاح تولتیپ برای نمایش تاریخ‌ها */
+.tooltip-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    display: flex;
+    flex-direction: column; /* برای اینکه تاریخ زیر اسم بیاید */
+    align-items: flex-start;
+}
+
+.t-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: var(--text-color);
+}
+
+.t-row i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}

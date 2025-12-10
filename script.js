@@ -180,28 +180,51 @@ rawNodes.filter(n => !n.isSpouse).forEach(n => {
 });
 
 // تولید HTML برای تولتیپ
+// جایگزین تابع generateTooltipHTML در فایل script.js
 function generateTooltipHTML(node) {
     if (node.isSpouse) return '';
+    
     const childCount = relationshipMap[node.id] ? relationshipMap[node.id].children.length : 0;
     const imageSrc = getAvatar(node.gender);
     const spouseId = relationshipMap[node.id].spouses[0];
     const spouseName = spouseId ? rawNodes.find(n => n.id === spouseId).originalLabel : '-';
-    
     const genderColor = node.gender === 'male' ? '#2563eb' : '#e11d48';
+
+    // --- محاسبه سن و تاریخ ---
+    let ageInfo = "";
+    let birthInfo = node.birth ? `متولد: ${node.birth}` : "";
+    let deathInfo = node.death ? ` | وفات: ${node.death}` : "";
+    
+    if (node.birth) {
+        if (node.death) {
+            // اگر فوت شده: محاسبه طول عمر
+            const age = node.death - node.birth;
+            ageInfo = `<div class="t-row"><i class="fas fa-hourglass-end"></i> <span>سن در زمان وفات: ${age} سال</span></div>`;
+        } else {
+            // اگر زنده است: محاسبه سن تا امسال (فرض ۱۴۰۳)
+            const currentYear = 1403; // یا new Date().toLocaleDateString(...) برای دقت بیشتر
+            const age = currentYear - node.birth;
+            ageInfo = `<div class="t-row"><i class="fas fa-hourglass-half"></i> <span>سن: ${age} سال</span></div>`;
+        }
+    }
+    // -------------------------
 
     return `
         <div class="tooltip-header" style="background:${genderColor}">
             <img src="${imageSrc}" class="tooltip-img">
-            <div class="tooltip-title">${node.originalLabel}</div>
+            <div class="tooltip-title">
+                ${node.originalLabel}
+                <div style="font-size:0.6em; opacity:0.9; margin-top:2px">${birthInfo}${deathInfo}</div>
+            </div>
         </div>
         <div class="tooltip-body">
             <div class="t-row"><i class="fas fa-venus-mars"></i> <span>${node.gender === 'male' ? 'مرد' : 'زن'}</span></div>
+            ${ageInfo}
             <div class="t-row"><i class="fas fa-ring"></i> <span>همسر: ${spouseName}</span></div>
             <div class="t-row"><i class="fas fa-child"></i> <span>تعداد فرزند: ${childCount}</span></div>
             <div class="t-badge" style="background:${node.color}20; color:${node.color}">
                 ${node.level === 0 ? 'ریشه خاندان' : node.level === 1 ? 'فرزند ارشد' : 'نوه'}
             </div>
-            <div style="font-size:0.7em; margin-top:5px; color:#666; text-align:center;">(دابل کلیک برای باز/بسته کردن)</div>
         </div>`;
 }
 
@@ -247,38 +270,59 @@ function initNetwork() {
 
     document.fonts.ready.then(function () {
         network = new vis.Network(container, data, options);
-// --- جایگزین بخش afterDrawing در script.js ---
         network.on("afterDrawing", function (ctx) {
-             // الف) مخفی کردن لودر
+             // 1. مخفی کردن لودر
              const loader = document.getElementById('loading-screen');
              if(loader && loader.style.display !== 'none') { 
                  loader.style.opacity = '0'; 
                  setTimeout(() => loader.style.display = 'none', 500); 
              }
 
-             // ب) رسم ایموجی (اصلاح شده: کوچک‌تر و نزدیک‌تر)
+             // گرفتن موقعیت تمام گره‌ها
+             const allPositions = network.getPositions();
+
+             // 2. رسم شمع 🕯️ برای تمام فوت‌شدگان
+             rawNodes.forEach(node => {
+                 // اگر گره الان در صفحه وجود دارد AND فوت شده است
+                 if (allPositions[node.id] && node.death) {
+                     
+                     // اگر این گره الان در حال جستجو (هایلایت) است، شمع نکش (تا عینک بیاید)
+                     if (highlightedNodeId === node.id) return;
+
+                     const pos = allPositions[node.id];
+                     
+                     // --- تنظیم فاصله شمع (خیلی نزدیک‌تر شد) ---
+                     const offset = node.level === 0 ? 42 : (node.level === 1 ? 32 : 22);
+
+                     ctx.font = "bold 20px Arial"; // سایز شمع
+                     ctx.textAlign = "center";
+                     ctx.textBaseline = "bottom";
+                     
+                    // تغییر برای شمع: سایه دورش را طلایی/نارنجی می‌کنیم تا در سفید هم دیده شود
+                     ctx.strokeStyle = '#f59e0b'; // رنگ نارنجی دور شمع
+                     ctx.lineWidth = 1; // خط نازک‌تر
+                     ctx.strokeText("🕯️", pos.x, pos.y - offset);
+                     
+                     // خود شمع
+                     ctx.fillStyle = "black";
+                     ctx.fillText("🕯️", pos.x, pos.y - offset);
+                 }
+             });
+
+             // 3. رسم عینک 😎 (برای جستجو)
             if (highlightedNodeId !== null) {
                 const pos = network.getPositions([highlightedNodeId])[highlightedNodeId];
                 if (pos) {
                     const node = rawNodes.find(n => n.id === highlightedNodeId);
-                    
-                    // --- تنظیم فاصله (نزدیک‌تر شده) ---
-                    // قبلا: 85, 65, 50 بود
-                    // الان بر اساس سایز دایره تنظیم دقیق شده:
+                    // تنظیم فاصله عینک (همان تنظیمات قبلی که اوکی بود)
                     const offset = node.level === 0 ? 55 : (node.level === 1 ? 45 : 32);
 
-                    // --- تنظیم سایز (کوچک‌تر شده) ---
-                    ctx.font = "bold 25px Arial"; // قبلا 40px بود
-                    
+                    ctx.font = "bold 25px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "bottom";
-                    
-                    // سایه سفید (نازک‌تر شده)
                     ctx.strokeStyle = 'white';
                     ctx.lineWidth = 3; 
                     ctx.strokeText("😎", pos.x, pos.y - offset);
-                    
-                    // خود ایموجی
                     ctx.fillStyle = "black"; 
                     ctx.fillText("😎", pos.x, pos.y - offset);
                 }
@@ -358,9 +402,11 @@ function toggleBranch(nodeId) {
     updateView();
 }
 
-// به‌روزرسانی گرافیک
 function updateView() {
     if(network) network.unselectAll();
+
+    // تشخیص تم تاریک
+    const isDarkMode = document.body.classList.contains('dark-mode');
 
     const filterValue = document.getElementById('view-filter') ? document.getElementById('view-filter').value : 'all';
     let allowedIds = new Set();
@@ -379,24 +425,49 @@ function updateView() {
     }
 
     const newNodes = rawNodes.filter(n => allowedIds.has(n.id)).map(n => {
+        // --- تنظیم رنگ هوشمند متن ---
+        let textColor, textStroke;
+        
+        if (isDarkMode) {
+            // تم تاریک: متن سفید با حاشیه مشکی
+            textColor = n.death ? '#9ca3af' : '#ffffff'; 
+            textStroke = '#0f172a'; // رنگ پس‌زمینه تاریک
+        } else {
+            // تم روشن: متن مشکی با حاشیه سفید
+            textColor = n.death ? '#4b5563' : '#000000'; 
+            textStroke = '#ffffff'; 
+        }
+
         let nodeObj = {
             id: n.id,
             level: n.level,
-            font: { background: 'rgba(255,255,255,0.9)', vadjust: 0, size: 20, bold: true },
+            font: { 
+                size: 20, 
+                color: textColor,        
+                strokeWidth: 4,          // ضخامت حاشیه دور متن (اصلاح شده)
+                strokeColor: textStroke, // رنگ حاشیه (اصلاح شده)
+                vadjust: 0, 
+                bold: true 
+            },
             shape: 'circularImage',
             label: n.originalLabel
         };
+
+        // تنظیمات رنگ گره‌ها
+        let borderColor = n.gender === 'male' ? '#2563eb' : '#e11d48';
+        let bgColor = '#fff';
+
+        if (n.death) {
+            borderColor = '#4b5563'; 
+            bgColor = '#f3f4f6';     
+        }
 
         if (n.isSpouse) {
             nodeObj.label = n.label === "نامشخص" ? "" : n.label;
             nodeObj.color = { border: '#9ca3af', background: '#fff' };
             nodeObj.image = getAvatar(n.gender);
         } else {
-            if (n.gender === 'male') {
-                nodeObj.color = { border: '#2563eb', background: '#fff' };
-            } else {
-                nodeObj.color = { border: '#e11d48', background: '#fff' }; 
-            }
+            nodeObj.color = { border: borderColor, background: bgColor };
             nodeObj.image = getAvatar(n.gender);
 
             const hasChildren = relationshipMap[n.id].children.length > 0;
@@ -405,7 +476,7 @@ function updateView() {
             }
         }
         
-        nodeObj.borderWidth = 4;
+        nodeObj.borderWidth = n.death ? 6 : 4; 
         
         if (currentUserId && n.id === currentUserId) {
              nodeObj.color.background = '#fef08a';
@@ -421,12 +492,10 @@ function updateView() {
         return {
             from: e.from, 
             to: e.to, 
-            // اگر گوست است، رنگش شفاف شود (نامرئی) ولی خط وجود داشته باشد
             color: isGhost ? 'rgba(0,0,0,0)' : (isSpouse ? '#ef4444' : '#b0b0b0'), 
-            // نکته مهم: اینجا دیگر hidden را true نمی‌کنیم
             dashes: isSpouse ? [5, 5] : false, 
             width: isSpouse ? 1.5 : 2,
-            hoverWidth: 0, // وقتی موس رفت روش هم دیده نشود
+            hoverWidth: 0, 
             smooth: {
                 type: isSpouse ? 'continuous' : 'cubicBezier',
                 forceDirection: 'vertical',
