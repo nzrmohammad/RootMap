@@ -101,16 +101,97 @@ select, input {
 select:focus, input:focus { outline: none; border-color: var(--accent-color); }
 
 /* استایل‌های جدید */
+/* --- اصلاحیه داشبورد: چیدمان شبکه‌ای ۳ ستونه --- */
+
 .stats-card {
-    display: flex; justify-content: space-between;
+    display: grid;
+    /* ایجاد ۳ ستون مساوی (این کار باعث می‌شود ۳ آیتم در بالا و ۳ آیتم در پایین قرار گیرند) */
+    grid-template-columns: repeat(3, 1fr);
+    /* فاصله: عدد اول فاصله بین سطرها (۱۵ پیکسل) و عدد دوم فاصله بین ستون‌ها (۵ پیکسل) */
+    gap: 15px 5px; 
+    
     background: linear-gradient(135deg, var(--accent-color), #3b82f6);
-    color: white; padding: 15px; border-radius: var(--radius-md);
-    margin-bottom: 20px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    color: white; 
+    padding: 15px 10px; /* پدینگ چپ و راست را کمی کم کردیم تا جا باز شود */
+    border-radius: var(--radius-md);
+    margin-bottom: 20px; 
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
 }
-.stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.stat-item i { opacity: 0.8; font-size: 0.9em; }
-.stat-item span { font-weight: 800; font-size: 1.2em; }
-.stat-item small { font-size: 0.7em; opacity: 0.9; }
+
+.stat-item { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: flex-start; /* تراز از بالا */
+    text-align: center;
+    /* جلوگیری از بیرون زدن متن‌های طولانی */
+    min-width: 0; 
+}
+
+.stat-item i { 
+    opacity: 0.85; 
+    font-size: 1.1em; 
+    margin-bottom: 5px; 
+}
+
+.stat-item span { 
+    font-weight: 800; 
+    font-size: 1.1em; /* کمی کوچک‌تر کردیم تا اعداد بزرگ جا شوند */
+    line-height: 1.1;
+    margin-bottom: 2px;
+}
+
+.stat-item small { 
+    font-size: 0.65em; /* سایز نوشته‌های فارسی */
+    opacity: 0.95; 
+    white-space: nowrap; /* جلوگیری از شکستن متن (مثل میانگین فرزند) */
+}
+
+/* --- استایل جستجوی زنده --- */
+.search-wrapper {
+    position: relative; /* برای قرارگیری صحیح لیست زیر باکس */
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none; /* پیش‌فرض مخفی */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9em;
+}
+
+.suggestion-item:last-child { border-bottom: none; }
+
+.suggestion-item:hover {
+    background: var(--bg-color);
+    color: var(--accent-color);
+    padding-right: 20px; /* افکت حرکت به راست */
+}
+
+.suggestion-match {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.s-info { font-size: 0.75em; color: var(--text-muted); }
 
 .btn-action {
     width: 100%; background: var(--bg-color); border: 2px dashed var(--accent-color);

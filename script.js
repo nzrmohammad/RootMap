@@ -4,6 +4,7 @@ let rawNodes = [], rawEdges = [], idCounter = 1;
 let expandedNodes = new Set(); // ست برای نگهداری وضعیت باز/بسته بودن نودها
 let network = null;
 let currentUserId = null;
+let highlightedNodeId = null;
 let currentLayout = "UD";
 const relationshipMap = {}; // نقشه روابط برای دسترسی سریع
 
@@ -220,7 +221,7 @@ function initNetwork() {
                 face: 'Vazirmatn', size: 20, color: '#000000', 
                 background: 'rgba(255, 255, 255, 0.9)', 
                 strokeWidth: 0, vadjust: 0,
-                bold: { size: 20, color: '#000000', mod: 'bold' } // <--- اصلاح شده
+                bold: { size: 20, color: '#000000', mod: 'bold' }
             },
             shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 10, x: 5, y: 5 }
         },
@@ -231,9 +232,9 @@ function initNetwork() {
         layout: { 
             hierarchical: { 
                 direction: "UD", 
-                sortMethod: 'directed', // تغییر برای نظم بهتر
-                nodeSpacing: 180,       // افزایش فاصله افقی
-                levelSeparation: 150,   // افزایش فاصله عمودی
+                sortMethod: 'directed',
+                nodeSpacing: 180,
+                levelSeparation: 150,
                 blockShifting: true, 
                 edgeMinimization: true,
                 parentCentralization: true,
@@ -246,10 +247,42 @@ function initNetwork() {
 
     document.fonts.ready.then(function () {
         network = new vis.Network(container, data, options);
-        
-        network.on("afterDrawing", function() {
+// --- جایگزین بخش afterDrawing در script.js ---
+        network.on("afterDrawing", function (ctx) {
+             // الف) مخفی کردن لودر
              const loader = document.getElementById('loading-screen');
-             if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500); }
+             if(loader && loader.style.display !== 'none') { 
+                 loader.style.opacity = '0'; 
+                 setTimeout(() => loader.style.display = 'none', 500); 
+             }
+
+             // ب) رسم ایموجی (اصلاح شده: کوچک‌تر و نزدیک‌تر)
+            if (highlightedNodeId !== null) {
+                const pos = network.getPositions([highlightedNodeId])[highlightedNodeId];
+                if (pos) {
+                    const node = rawNodes.find(n => n.id === highlightedNodeId);
+                    
+                    // --- تنظیم فاصله (نزدیک‌تر شده) ---
+                    // قبلا: 85, 65, 50 بود
+                    // الان بر اساس سایز دایره تنظیم دقیق شده:
+                    const offset = node.level === 0 ? 55 : (node.level === 1 ? 45 : 32);
+
+                    // --- تنظیم سایز (کوچک‌تر شده) ---
+                    ctx.font = "bold 25px Arial"; // قبلا 40px بود
+                    
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "bottom";
+                    
+                    // سایه سفید (نازک‌تر شده)
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3; 
+                    ctx.strokeText("😎", pos.x, pos.y - offset);
+                    
+                    // خود ایموجی
+                    ctx.fillStyle = "black"; 
+                    ctx.fillText("😎", pos.x, pos.y - offset);
+                }
+            }
         });
         
         const tooltipEl = document.getElementById('custom-tooltip');
@@ -271,8 +304,17 @@ function initNetwork() {
         network.on("dragStart", () => tooltipEl.style.display = 'none');
         network.on("zoom", () => tooltipEl.style.display = 'none');
         
-        network.on("click", function (params) { 
-            if (params.nodes.length > 0) handleNodeClick(params.nodes[0]); 
+        // --- اصلاحیه ۲: هندل کردن کامل کلیک ---
+        network.on("click", function(params) {
+            // اگر روی گره کلیک شد: نمایش اطلاعات
+            if (params.nodes.length > 0) {
+                handleNodeClick(params.nodes[0]);
+            } 
+            // اگر روی جای خالی کلیک شد: حذف ایموجی
+            else {
+                highlightedNodeId = null;
+                network.redraw();
+            }
         });
         
         network.on("doubleClick", function (params) { 
@@ -548,8 +590,105 @@ function exportHighQuality() {
         });
     }, 500);
 }
-function searchNode() { const q = document.getElementById('search').value; const t = rawNodes.find(n => n.originalLabel.includes(q)); if(t && nodes.get(t.id)) { network.selectNodes([t.id]); network.focus(t.id, {scale: 1.2, animation: true}); } }
+// --- جایگزین تابع searchNode در فایل script.js ---
 
+function searchNode() {
+    const query = document.getElementById('search').value.trim();
+    const suggestionsBox = document.getElementById('search-suggestions');
+    
+    // اگر ورودی خالی بود، لیست را مخفی کن
+    if (query.length === 0) {
+        suggestionsBox.style.display = 'none';
+        return;
+    }
+
+    // فیلتر کردن افراد (بر اساس نام)
+    const matches = rawNodes.filter(n => 
+        !n.isSpouse && // همسرها را جدا جستجو نکنیم (اختیاری)
+        n.originalLabel.includes(query)
+    );
+
+    if (matches.length > 0) {
+        let html = '';
+        matches.forEach(node => {
+            // هایلایت کردن بخش پیدا شده در متن
+            const regex = new RegExp(`(${query})`, 'gi');
+            const highlightedName = node.originalLabel.replace(regex, '<span class="suggestion-match">$1</span>');
+            
+            // اطلاعات اضافی مثل نام پدر یا همسر برای تشخیص تشابه اسمی
+            const spouseId = relationshipMap[node.id].spouses[0];
+            const spouseName = spouseId ? rawNodes.find(n => n.id === spouseId).originalLabel : '';
+            const extraInfo = spouseName ? `(همسر: ${spouseName})` : '';
+
+            html += `
+                <div class="suggestion-item" onclick="selectResult(${node.id})">
+                    <span>${highlightedName} <span class="s-info">${extraInfo}</span></span>
+                    <i class="fas fa-chevron-left" style="font-size:0.7em; opacity:0.5"></i>
+                </div>
+            `;
+        });
+        suggestionsBox.innerHTML = html;
+        suggestionsBox.style.display = 'block';
+    } else {
+        suggestionsBox.innerHTML = '<div class="suggestion-item" style="cursor:default; opacity:0.7">موردی یافت نشد</div>';
+        suggestionsBox.style.display = 'block';
+    }
+}
+
+// --- نسخه پیشرفته تابع انتخاب نتیجه جستجو ---
+
+function selectResult(nodeId) {
+    // 1. بستن لیست و پاک کردن ورودی
+    document.getElementById('search-suggestions').style.display = 'none';
+    document.getElementById('search').value = '';
+
+    // 2. باز کردن مسیر والدین
+    expandPathToNode(nodeId);
+    updateView();
+
+    // 3. تنظیم متغیر برای رسم ایموجی (تغییر اصلی اینجاست)
+    highlightedNodeId = nodeId;
+    network.redraw(); // دستور رسم مجدد برای نمایش ایموجی
+
+    // 4. زوم روی سوژه
+    setTimeout(() => {
+        network.selectNodes([nodeId]);
+        network.focus(nodeId, {
+            scale: 1.3,
+            animation: {
+                duration: 1500,
+                easingFunction: 'easeInOutQuart'
+            }
+        });
+    }, 100);
+
+    // 5. نمایش اطلاعات
+    handleNodeClick(nodeId);
+}
+
+// --- تابع کمکی: باز کردن بازگشتی والدین ---
+function expandPathToNode(targetId) {
+    const parentIds = relationshipMap[targetId].parents;
+    
+    if (parentIds && parentIds.length > 0) {
+        parentIds.forEach(parentId => {
+            // اگر این پدر قبلاً باز نشده، بازش کن (به لیست بازشده‌ها اضافه کن)
+            if (!expandedNodes.has(parentId)) {
+                expandedNodes.add(parentId);
+            }
+            // حالا برو سراغ پدرِ این پدر (بازگشتی تا ریشه)
+            expandPathToNode(parentId);
+        });
+    }
+}
+
+// بستن لیست جستجو وقتی جای دیگری کلیک شد
+document.addEventListener('click', function(e) {
+    const container = document.querySelector('.search-wrapper');
+    if (!container.contains(e.target)) {
+        document.getElementById('search-suggestions').style.display = 'none';
+    }
+});
 // --- 5. تنظیمات و توابع تایم‌لاین ---
 
 let timeline = null;

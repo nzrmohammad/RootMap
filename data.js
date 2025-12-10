@@ -3,6 +3,12 @@ const genealogyData = {
     birth: 1280, death: 1365,
     spouse: "نامشخص",
     children: [
+        // 1. سیاد
+        {
+            name: "سیاد", gender: "male", spouse: "", children: []
+        },
+
+        // 2. سادات (همان اطلاعات قبلی)
         {
             name: "سادات", gender: "male", spouse: "خمار",
             birth: 1310, death: 1390,
@@ -61,7 +67,7 @@ const genealogyData = {
                     children: ["شهربانو", "حوری", "فضل الله", "فاطمه", "زرین تاج", "زینب", "ایرج", "مملکت", "رامین"]
                 },
                 {
-                    name: "زلزله", gender: "female", spouse: "همسر زلزله",
+                    name: "زلزله", gender: "female", spouse: "سعدی",
                     children: ["اسدالله", "افروز", "کرم الله", "افسر", "حبیب"]
                 },
                 {
@@ -73,6 +79,56 @@ const genealogyData = {
                     children: ["پیران", "فریده", "هومان"]
                 }
             ]
-        }
+        },
+
+        // 3. مدد
+        {
+            name: "مدد", gender: "male", spouse: "", children: []
+        },
+
+        // 4. بهمن (فرزند مستقیم نظر)
+        {
+            name: "بهمن", gender: "male", spouse: "", children: []
+        },
+
+        // 5. رحمن
+        {
+            name: "رحمن", gender: "male", spouse: "", children: []
+        },
+
+        // 6. بابانظر
+        {
+            name: "بابانظر", gender: "male", spouse: "", children: []
+        },
+
+        // 7. سیاه
+        {
+            name: "سیاه", gender: "male", spouse: "", children: []
+        },
+
+        // 8. حسن
+        {
+            name: "حسن قلی", gender: "male", spouse: "", children: []
+        },
+        // 8. حسن
+        {
+            name: "گوهر", gender: "female", spouse: "", children: []
+        },
+        // 8. حسن
+        {
+            name: "خاور", gender: "female", spouse: "", children: []
+        },
+        // 8. حسن
+        {
+            name: "آبی جهان", gender: "female", spouse: "", children: []
+        },
+        // 8. حسن
+        {
+            name: "قریش", gender: "female", spouse: "", children: []
+        },
+        // 8. حسن
+        {
+            name: "نسبر", gender: "female", spouse: "", children: []
+        },
     ]
 };
