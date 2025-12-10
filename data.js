@@ -3,18 +3,18 @@ const genealogyData = {
     spouse: "نامشخص",
     children: [
         {
-            name: "سادات", gender: "male", spouse: "",
+            name: "سادات", gender: "male", spouse: "خمار",
             children: [
                 {
-                    name: "گوهر", gender: "female", spouse: "همسر گوهر",
+                    name: "گوهر", gender: "female", spouse: "ناصر",
                     children: ["محمدحسین", "رخسار", "حسین", "هومان", "فریبرز", "بیژن"]
                 },
                 {
-                    name: "زلیخا", gender: "female", spouse: "همسر زلیخا",
+                    name: "زلیخا", gender: "female", spouse: "فضل الله",
                     children: ["شکرالله", "سیف الله", "زیور", "هدایت", "کرامت", "مسیح"]
                 },
                 {
-                    name: "امیرحمزه", gender: "male", spouse: "ماه",
+                    name: "امیرحمزه", gender: "male", spouse: "ماه خاور",
                     children: [
                         {
                             name: "عطاپور", gender: "male", spouse: "فریده",
@@ -25,11 +25,11 @@ const genealogyData = {
                             children: ["پروین", "پروش", "کفایت", "محمد", "سارا", "مهدی"]
                         },
                         {
-                            name: "داستان", gender: "female", spouse: "عیسی",
+                            name: "خدیجه", gender: "female", spouse: "عیسی",
                             children: ["رویا", "مجتبی", "سعید", "کامران", "وحید", "المیرا", "فرزاد"]
                         },
                         {
-                            name: "ناهید", gender: "female", spouse: "نامشخص",
+                            name: "ناهید", gender: "female", spouse: "عبدی",
                             children: ["زهرا", "مهران", "زهره", "الناز", "مهرداد"]
                         },
                         {
@@ -51,11 +51,11 @@ const genealogyData = {
                     ]
                 },
                 {
-                    name: "ماه آفرین", gender: "female", spouse: "همسر افرین",
+                    name: "ماه آفرین", gender: "female", spouse: "اردشیر",
                     children: ["منوچهر"]
                 },
                 {
-                    name: "جیران", gender: "female", spouse: "همسر جیران",
+                    name: "جیران", gender: "female", spouse: "امرالله",
                     children: ["شهربانو", "حوری", "فرض الله", "فاطمه", "زرین تاج", "زینب", "ایرج", "مملکت", "رامین"]
                 },
                 {
@@ -63,11 +63,11 @@ const genealogyData = {
                     children: ["اسدالله", "افروز", "کرم الله", "افسر", "حبیب"]
                 },
                 {
-                    name: "امیرحسین", gender: "male", spouse: "همسر امیرحسین",
+                    name: "امیرحسین", gender: "male", spouse: "جان جان",
                     children: ["پروانه", "حسین", "شاپور", "هوشنگ", "پوران", "بیژن", "آذر", "هما"]
                 },
                 {
-                    name: "آفتاب", gender: "female", spouse: "همسر آفتاب",
+                    name: "آفتاب", gender: "female", spouse: "سیف الله",
                     children: ["پیران", "فریده", "هومان"]
                 }
             ]

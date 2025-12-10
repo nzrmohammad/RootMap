@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شجره‌نامه مدرن (نسخه دو پنله)</title>
+    <title>شجره‌نامه حرفه‌ای (نسخه کامل)</title>
     
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
@@ -16,7 +16,7 @@
 
     <div id="loading-screen">
         <div class="spinner"></div>
-        <p>در حال بارگذاری...</p>
+        <p>در حال ترسیم شجره‌نامه...</p>
     </div>
 
     <header id="app-header">
@@ -25,17 +25,14 @@
             <span>پروژه ریشه</span>
         </div>
         <div class="header-tools">
-            <button class="header-btn" onclick="toggleLeftPanel()" title="تنظیمات و ابزار"><i class="fas fa-cog"></i></button>
-            
+            <button class="header-btn" onclick="toggleLeftPanel()" title="تنظیمات"><i class="fas fa-cog"></i></button>
             <div class="sep-line"></div>
-
-            <button class="header-btn" onclick="toggleDarkMode()" title="تم"><i class="fas fa-moon"></i></button>
-            <button class="header-btn" onclick="toggleViewMode()" title="تایم‌لاین"><i class="fas fa-clock"></i></button>
-            <button class="header-btn" onclick="exportGraph()" title="ذخیره تصویر"><i class="fas fa-camera"></i></button>
-            
+            <button class="header-btn" onclick="toggleDarkMode()" title="تم شب/روز"><i class="fas fa-moon"></i></button>
+            <button class="header-btn" onclick="toggleTimeline()" title="نمایش/مخفی تایم‌لاین"><i class="fas fa-history"></i></button>
+            <button class="header-btn" onclick="exportHighQuality()" title="ذخیره تصویر HD"><i class="fas fa-camera"></i></button>
+            <button class="header-btn" onclick="downloadData()" title="دانلود فایل JSON"><i class="fas fa-file-download"></i></button>
             <div class="sep-line"></div>
-
-            <button class="header-btn" onclick="toggleSidebar()" title="جزئیات و جستجو"><i class="fas fa-bars"></i></button>
+            <button class="header-btn" onclick="toggleSidebar()" title="منو"><i class="fas fa-bars"></i></button>
         </div>
     </header>
 
@@ -43,37 +40,29 @@
         
         <div id="left-panel" class="closed">
             <div class="sidebar-header">
-                <h3>تنظیمات و ابزار</h3>
+                <h3>تنظیمات نمایش</h3>
                 <button class="close-btn" onclick="toggleLeftPanel()"><i class="fas fa-times"></i></button>
             </div>
             <div class="scroll-content">
                 <div class="control-group">
                     <label><i class="fas fa-filter"></i> فیلتر نمایش</label>
                     <select id="view-filter" onchange="updateView()">
-                        <option value="main_family">خاندان اصلی</option>
                         <option value="all">کل اقوام</option>
                     </select>
                 </div>
-
                 <div class="control-group">
-                    <label><i class="fas fa-layer-group"></i> چیدمان نمودار</label>
+                    <label><i class="fas fa-layer-group"></i> جهت نمودار</label>
                     <select id="layout-direction" onchange="changeLayout()">
                         <option value="UD" selected>درختی (بالا به پایین)</option>
                         <option value="RL">ستونی (راست به چپ)</option>
                     </select>
                 </div>
-
                 <div class="divider"></div>
-
                 <div class="path-finder-box">
-                    <div class="pf-title"><i class="fas fa-route"></i> محاسبه نسبت</div>
-                    <div class="input-row">
-                        <select id="path-from"><option value="">مبدا...</option></select>
-                    </div>
-                    <div class="input-row" style="margin-top:8px">
-                        <select id="path-to"><option value="">مقصد...</option></select>
-                    </div>
-                    <button class="btn-calc" onclick="calculatePath()">یافتن مسیر</button>
+                    <div class="pf-title"><i class="fas fa-route"></i> نسبت یاب</div>
+                    <select id="path-from" class="mb-2"><option value="">نفر اول...</option></select>
+                    <select id="path-to"><option value="">نفر دوم...</option></select>
+                    <button class="btn-calc" onclick="calculatePath()">محاسبه</button>
                     <div id="path-result"></div>
                 </div>
             </div>
@@ -81,11 +70,29 @@
 
         <div id="sidebar" class="open">
             <div class="sidebar-header">
-                <h3>اطلاعات و جستجو</h3>
+                <h3>اطلاعات خاندان</h3>
                 <button class="close-btn" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
             </div>
 
             <div class="scroll-content">
+                <div id="stats-box" class="stats-card">
+                    <div class="stat-item">
+                        <i class="fas fa-users"></i>
+                        <span id="stat-total">0</span>
+                        <small>کل جمعیت</small>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-stream"></i>
+                        <span id="stat-gens">0</span>
+                        <small>نسل</small>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-ring"></i>
+                        <span id="stat-marriages">0</span>
+                        <small>ازدواج</small>
+                    </div>
+                </div>
+
                 <div class="control-group">
                     <label style="color:var(--accent-color)"><i class="fas fa-user-circle"></i> هویت شما</label>
                     <select id="user-identity" onchange="updateIdentity()">
@@ -93,11 +100,9 @@
                     </select>
                 </div>
 
-                <div class="divider"></div>
-                
                 <div class="search-wrapper">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="search" class="search-box" placeholder="جستجو در خاندان..." onkeyup="searchNode()">
+                    <input type="text" id="search" class="search-box" placeholder="جستجو..." onkeyup="searchNode()">
                 </div>
 
                 <div id="profile-card" class="profile-card">
@@ -108,10 +113,9 @@
                         <div class="d-item"><span>تولد</span><b id="p-birth">-</b></div>
                         <div class="d-item"><span>همسر</span><b id="p-spouse">-</b></div>
                     </div>
-                </div>
-                
-                <div class="hint-box">
-                    <small>برای مشاهده جزئیات روی افراد کلیک کنید</small>
+                    <button id="btn-add-child" class="btn-action" onclick="showAddChildPrompt()">
+                        <i class="fas fa-plus"></i> افزودن فرزند
+                    </button>
                 </div>
             </div>
         </div>
@@ -119,7 +123,8 @@
         <div id="content-area">
             <div id="mynetwork"></div>
             <div id="custom-tooltip"></div>
-            <div id="timeline-wrapper">
+            
+            <div id="timeline-container" class="timeline-hidden">
                 <div id="mytimeline"></div>
             </div>
             
@@ -131,6 +136,5 @@
 
     <script src="data.js"></script>
     <script src="script.js"></script>
-    
 </body>
 </html>
